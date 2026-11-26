@@ -1,0 +1,5 @@
+# Normalise line endings so Windows and CI agree.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.onnx binary
