@@ -45,6 +45,11 @@ _APP_SUFFIXES = (
 )
 
 _PATH_RE = re.compile(r"[A-Za-z]:\\[^\"<>|?*\r\n]+")
+# Editors separate title segments with a hyphen, an en dash or an em dash.
+# The two dashes are written as escapes: as literal characters they are
+# indistinguishable from a hyphen in most editors, which makes this pattern
+# impossible to review by eye.
+_SEGMENT_SPLIT = re.compile("\\s[-\\u2013\\u2014]\\s")
 # Editors mark unsaved changes with a leading bullet or asterisk.
 _DIRTY_MARK = re.compile(r"^\s*[●•*]\s*")
 
@@ -70,7 +75,7 @@ def candidate_names(title: str) -> list[str]:
     if not title:
         return []
     cleaned = _DIRTY_MARK.sub("", title).strip()
-    parts = [p.strip() for p in re.split(r"\s[-—–]\s", cleaned) if p.strip()]
+    parts = [p.strip() for p in _SEGMENT_SPLIT.split(cleaned) if p.strip()]
     if not parts:
         return []
     # Drop a trailing application name, then prefer the last remaining
@@ -79,9 +84,12 @@ def candidate_names(title: str) -> list[str]:
         parts = parts[:-1]
     out: list[str] = []
     for part in reversed(parts):
-        # "akmal@host: ~/project" and "project [SSH]" both appear in the wild.
+        # "akmal@host: ~/project" and "project [SSH: devbox]" both appear in
+        # the wild. Bracketed annotations come off first: they can contain a
+        # colon of their own, and splitting on that would keep the
+        # annotation and throw away the project name.
+        part = re.sub(r"\s*\[[^\]]*\]\s*", " ", part).strip()
         part = part.split(":")[-1].strip()
-        part = re.sub(r"\s*\[[^\]]*\]\s*$", "", part).strip()
         part = part.rsplit("/", 1)[-1].rsplit("\\", 1)[-1].strip()
         if part and part not in out and len(part) < 80:
             out.append(part)
@@ -89,14 +97,31 @@ def candidate_names(title: str) -> list[str]:
 
 
 def path_in_title(title: str) -> Path | None:
-    """An absolute Windows path mentioned in the title, if any."""
+    """An absolute Windows path mentioned in the title, if any.
+
+    Titles append things after the path -- ``C:\\src\\app - Windows
+    Terminal`` -- and a path may itself contain spaces and dashes, so the
+    match is trimmed one trailing " - " segment at a time until something
+    on disk is found. Only a real file or directory is accepted, which
+    keeps a trailing application name from being read as a folder.
+    """
     match = _PATH_RE.search(title or "")
     if not match:
         return None
-    candidate = Path(match.group(0).rstrip(" -"))
-    if candidate.is_file():
-        candidate = candidate.parent
-    return candidate if candidate.is_dir() else None
+    text = match.group(0).strip()
+    while text:
+        candidate = Path(text)
+        try:
+            if candidate.is_file():
+                return candidate.parent
+            if candidate.is_dir():
+                return candidate
+        except OSError:
+            pass
+        if " - " not in text:
+            return None
+        text = text.rsplit(" - ", 1)[0].strip()
+    return None
 
 
 def find_repo_root(start: Path) -> Path | None:

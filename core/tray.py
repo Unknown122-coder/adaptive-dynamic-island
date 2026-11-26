@@ -54,8 +54,12 @@ def build_icon(theme: Theme, size: int = 64) -> QIcon:
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(dot)
     painter.drawEllipse(
-        QRectF(pill.right() - pill.height() * 0.78, pill.top() + pill.height() * 0.28,
-               pill.height() * 0.44, pill.height() * 0.44)
+        QRectF(
+            pill.right() - pill.height() * 0.78,
+            pill.top() + pill.height() * 0.28,
+            pill.height() * 0.44,
+            pill.height() * 0.44,
+        )
     )
     painter.end()
     return QIcon(pixmap)
@@ -126,7 +130,9 @@ class TrayController(QObject):
                 action.setCheckable(True)
                 action.setChecked(self._settings.get("theme") == path.stem)
                 action.triggered.connect(
-                    lambda _checked=False, name=path.stem: self.theme_selected.emit(name)
+                    lambda _checked=False, name=path.stem: (
+                        self.theme_selected.emit(name)
+                    )
                 )
                 themes.addAction(action)
         if not seen:
@@ -179,7 +185,7 @@ class TrayController(QObject):
     def _open_settings_folder(self) -> None:
         import os
 
-        os.startfile(str(paths.user_dir()))  # noqa: S606 - intended shell open
+        os.startfile(str(paths.user_dir()))
 
     # ---- presentation -------------------------------------------------
 

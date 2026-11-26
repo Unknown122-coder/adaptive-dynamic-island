@@ -16,6 +16,7 @@ without the wrapped tool knowing anything about the island.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import subprocess
 import sys
 import time
@@ -25,7 +26,7 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from ipc.client import ActivityError, IslandClient  # noqa: E402
+from ipc.client import ActivityError, IslandClient
 
 
 def _client(args: argparse.Namespace) -> IslandClient:
@@ -124,10 +125,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         elapsed = time.monotonic() - started
         status = "ok" if code == 0 else ("cancelled" if code == 130 else "fail")
         detail = f"exit {code} · {elapsed:.1f}s"
-        try:
+        with contextlib.suppress(ActivityError):
             client.done(activity_id, status, title=title, detail=detail)
-        except ActivityError:
-            pass
     client.close()
     return code
 

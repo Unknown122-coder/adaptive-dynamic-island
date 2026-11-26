@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    # The app is Windows-only by design: it calls SetWinEventHook, reads the
+    # capability consent store and queries display topology. Running the
+    # suite anywhere else would only test the parts that do not matter.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Unit tests
+        run: pytest tests
+
+      - name: Render the UI states
+        # Offscreen rendering, so this runs without a desktop session and
+        # fails if a change leaves any island state blank.
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTHONUTF8: "1"
+        run: python scripts/preview.py
+
+      - name: Upload rendered states
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: island-preview
+          path: build/preview/
+          if-no-files-found: warn

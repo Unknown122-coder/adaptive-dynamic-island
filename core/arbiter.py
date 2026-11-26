@@ -7,7 +7,8 @@ the design's whole point:
 
 * A provider can be added or removed at runtime without touching the window.
 * Two providers shouting at once is resolved by policy, not by whichever
-  timer happened to fire last.
+  timer happened to fire last, and ties fall back to publication order
+  rather than to a clock too coarse to separate them.
 * The window has a single input, so it has a single animation path, which is
   what keeps the motion coherent instead of janky.
 """
@@ -77,7 +78,7 @@ class ContentArbiter(QObject):
         with self._lock:
             return sorted(
                 self._items.values(),
-                key=lambda c: (c.priority, c.updated_at),
+                key=lambda c: (int(c.priority), c.seq),
                 reverse=True,
             )
 
@@ -104,7 +105,7 @@ class ContentArbiter(QObject):
             # Highest priority first; among equals, the freshest update.
             return max(
                 self._items.values(),
-                key=lambda c: (int(c.priority), c.updated_at),
+                key=lambda c: (int(c.priority), c.seq),
             )
 
     def _reevaluate(self) -> None:

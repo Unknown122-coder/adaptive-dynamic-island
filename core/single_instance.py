@@ -55,7 +55,7 @@ class SingleInstance:
             _kernel32.CloseHandle(wintypes.HANDLE(self._handle))
             self._handle = None
 
-    def __enter__(self) -> "SingleInstance":
+    def __enter__(self) -> SingleInstance:
         self.acquire()
         return self
 

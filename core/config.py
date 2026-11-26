@@ -115,7 +115,7 @@ class Settings:
     # ---- construction ------------------------------------------------
 
     @classmethod
-    def load(cls) -> "Settings":
+    def load(cls) -> Settings:
         """Read user settings, layered over shipped defaults.
 
         Order, lowest first: built-in DEFAULTS, the shipped

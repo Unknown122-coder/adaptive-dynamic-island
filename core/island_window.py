@@ -25,6 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from PySide6.QtCore import (
+    Property,
     QEasingCurve,
     QPoint,
     QPropertyAnimation,
@@ -32,7 +33,6 @@ from PySide6.QtCore import (
     QRectF,
     Qt,
     QTimer,
-    Property,
     Signal,
 )
 from PySide6.QtGui import (
@@ -397,7 +397,7 @@ class IslandWindow(QWidget):
         )
         window_style.set_click_through(hwnd, enabled=not interactive)
 
-    def showEvent(self, event) -> None:  # noqa: N802 - Qt naming
+    def showEvent(self, event) -> None:
         super().showEvent(event)
         hwnd = int(self.winId())
         window_style.apply_overlay_styles(hwnd)
@@ -406,7 +406,7 @@ class IslandWindow(QWidget):
 
     # ---- interaction -------------------------------------------------
 
-    def enterEvent(self, event) -> None:  # noqa: N802
+    def enterEvent(self, event) -> None:
         super().enterEvent(event)
         self._hovered = True
         self._close_timer.stop()
@@ -414,7 +414,7 @@ class IslandWindow(QWidget):
             self._open_timer.start()
         self.update()
 
-    def leaveEvent(self, event) -> None:  # noqa: N802
+    def leaveEvent(self, event) -> None:
         super().leaveEvent(event)
         self._hovered = False
         self._open_timer.stop()
@@ -432,7 +432,7 @@ class IslandWindow(QWidget):
             return
         self.set_expanded(False)
 
-    def mousePressEvent(self, event) -> None:  # noqa: N802
+    def mousePressEvent(self, event) -> None:
         pos = event.position().toPoint()
         for hit in self._hits:
             if not hit.rect.contains(pos):
@@ -456,7 +456,7 @@ class IslandWindow(QWidget):
         if not self._expanded:
             self.set_expanded(True)
 
-    def mouseMoveEvent(self, event) -> None:  # noqa: N802
+    def mouseMoveEvent(self, event) -> None:
         super().mouseMoveEvent(event)
         pos = event.position().toPoint()
         over = any(h.rect.contains(pos) for h in self._hits)
@@ -468,20 +468,20 @@ class IslandWindow(QWidget):
 
     # ---- drag and drop ----------------------------------------------
 
-    def dragEnterEvent(self, event) -> None:  # noqa: N802
+    def dragEnterEvent(self, event) -> None:
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
             self._drag_active = True
             self._resize_for_content(animate=True)
             self.update()
 
-    def dragLeaveEvent(self, event) -> None:  # noqa: N802
+    def dragLeaveEvent(self, event) -> None:
         super().dragLeaveEvent(event)
         self._drag_active = False
         self._resize_for_content(animate=True)
         self.update()
 
-    def dropEvent(self, event) -> None:  # noqa: N802
+    def dropEvent(self, event) -> None:
         paths = [
             u.toLocalFile()
             for u in event.mimeData().urls()
@@ -515,7 +515,7 @@ class IslandWindow(QWidget):
             return self._theme.color("accent_neutral")
         return self._theme.accent_for(Urgency(content.urgency).name)
 
-    def paintEvent(self, event) -> None:  # noqa: N802
+    def paintEvent(self, event) -> None:
         self._ensure_fonts()
         t = self._theme
         painter = QPainter(self)
@@ -547,9 +547,12 @@ class IslandWindow(QWidget):
             painter.setPen(pen)
             painter.drawPath(path)
 
-        if t.effect("urgency_edge") and self._content is not None:
-            if self._content.urgency != Urgency.NEUTRAL:
-                self._paint_urgency_edge(painter, pill, radius)
+        if (
+            t.effect("urgency_edge")
+            and self._content is not None
+            and self._content.urgency != Urgency.NEUTRAL
+        ):
+            self._paint_urgency_edge(painter, pill, radius)
 
         self._hits = []
         if self._content is None:

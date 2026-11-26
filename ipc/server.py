@@ -84,7 +84,7 @@ class ActivityServer(QObject):
         if not self._server.listen(QHostAddress("127.0.0.1"), 0):
             print(f"[activity] cannot listen: {self._server.errorString()}")
             return False
-        self._port = int(self._server.serverPort())
+        self._port = self._server.serverPort()
         self._token = endpoint_module.fresh_token()
         endpoint_module.publish(self._port, self._token)
         self.started.emit(self._port)
@@ -233,5 +233,5 @@ class ActivityServer(QObject):
     def _collapsed_label(command: protocol.Command) -> str:
         title = command.title or command.id
         if command.progress is not None and command.progress >= 0:
-            return f"{title} {int(round(command.progress * 100))}%"
+            return f"{title} {round(command.progress * 100)}%"
         return title

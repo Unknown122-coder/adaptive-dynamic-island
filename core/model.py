@@ -12,10 +12,17 @@ window growing complexity, and it is what separates this from the common
 
 from __future__ import annotations
 
+import itertools
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Callable
+
+# Publication order. time.monotonic() on Windows advances in ~15 ms steps,
+# so two providers publishing in the same tick would compare equal and the
+# arbiter's tie-break would depend on dict ordering. A counter makes the
+# ordering total and explicit.
+_SEQUENCE = itertools.count(1)
 
 
 class Priority(IntEnum):
@@ -81,9 +88,12 @@ class IslandContent:
     # for a hover. Reserve this for ALERT and PRIVACY.
     auto_expand: bool = False
     updated_at: float = field(default_factory=time.monotonic)
+    # Strictly increasing publication order, used for tie-breaking.
+    seq: int = field(default_factory=lambda: next(_SEQUENCE))
 
     def touch(self) -> None:
         self.updated_at = time.monotonic()
+        self.seq = next(_SEQUENCE)
 
     @property
     def expired(self) -> bool:

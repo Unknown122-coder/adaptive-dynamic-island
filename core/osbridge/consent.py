@@ -27,6 +27,7 @@ fallback if that call is unavailable.
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import os
 import winreg
@@ -219,7 +220,7 @@ class _ConsentThread(QThread):
             self._last = fingerprint
             self.updated.emit(snap)
 
-    def run(self) -> None:  # noqa: C901 - a wait loop reads better whole
+    def run(self) -> None:
         opened: list[winreg.HKEYType] = []
         events: list[int] = []
         try:
@@ -256,7 +257,7 @@ class _ConsentThread(QThread):
 
             registered = [False] * len(events)
             while True:
-                for i, (key, evt) in enumerate(zip(opened, events)):
+                for i, (key, evt) in enumerate(zip(opened, events, strict=False)):
                     if registered[i]:
                         continue
                     rc = _advapi32.RegNotifyChangeKeyValue(
@@ -291,10 +292,8 @@ class _ConsentThread(QThread):
             for evt in events:
                 _kernel32.CloseHandle(wintypes.HANDLE(evt))
             for key in opened:
-                try:
+                with contextlib.suppress(OSError):
                     key.Close()
-                except OSError:
-                    pass
 
 
 class ConsentWatcher(QObject):

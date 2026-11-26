@@ -15,22 +15,22 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from PySide6.QtCore import QObject, Qt, QTimer  # noqa: E402
-from PySide6.QtGui import QGuiApplication  # noqa: E402
-from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
+from PySide6.QtCore import QObject, Qt, QTimer
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
-from core import paths  # noqa: E402
-from core.arbiter import ContentArbiter  # noqa: E402
-from core.config import Settings  # noqa: E402
-from core.context_engine import ContextEngine  # noqa: E402
-from core.island_window import IslandWindow  # noqa: E402
-from core.osbridge.consent import ConsentWatcher  # noqa: E402
-from core.osbridge.window_hooks import ForegroundWatcher  # noqa: E402
-from core.single_instance import SingleInstance  # noqa: E402
-from core.theme import load_theme  # noqa: E402
-from core.tray import TrayController  # noqa: E402
-from ipc.server import ActivityServer  # noqa: E402
-from workers.ambient import AmbientProvider  # noqa: E402
+from core import paths
+from core.arbiter import ContentArbiter
+from core.config import Settings
+from core.context_engine import ContextEngine
+from core.island_window import IslandWindow
+from core.osbridge.consent import ConsentWatcher
+from core.osbridge.window_hooks import ForegroundWatcher
+from core.single_instance import SingleInstance
+from core.theme import load_theme
+from core.tray import TrayController
+from ipc.server import ActivityServer
+from workers.ambient import AmbientProvider
 
 APP_NAME = "Adaptive Dynamic Island"
 
@@ -105,9 +105,13 @@ class Application(QObject):
             self.ambient.start()
         if self.settings.get("providers.context", True):
             self.context.start()
-        if self.settings.get("providers.activities", True):
-            if self.activities.start():
-                print(f"[main] live activity API on 127.0.0.1:{self.activities.port}")
+        if self.settings.get("providers.activities", True) and (
+            self.activities.start()
+        ):
+            print(
+                "[main] live activity API on "
+                f"127.0.0.1:{self.activities.port}"
+            )
 
         # Nothing has published yet on a cold start, so prime the window
         # rather than leaving a blank strip for a second.
@@ -187,7 +191,7 @@ class Application(QObject):
         from core.geometry import describe as describe_placement
 
         lines = [
-            f"Version: development build",
+            "Version: development build",
             f"Settings: {self.settings.path}",
             f"Theme: {self.theme.name}"
             + (f" ({self.theme.source})" if self.theme.source else " (built-in)"),
@@ -196,10 +200,15 @@ class Application(QObject):
             f"  {describe_placement(placement) if placement else 'not resolved'}",
             "",
             "OS integration",
-            f"  foreground hooks: {'installed' if self.foreground.hooked else 'POLLING FALLBACK'}",
+            "  foreground hooks: "
+            + ("installed" if self.foreground.hooked else "POLLING FALLBACK"),
             f"  microphone in use: {self.consent.microphone_live()}",
-            f"  live activity API: "
-            + (f"127.0.0.1:{self.activities.port}" if self.activities.listening else "off"),
+            "  live activity API: "
+            + (
+                f"127.0.0.1:{self.activities.port}"
+                if self.activities.listening
+                else "off"
+            ),
             f"  camera in use: {self.consent.webcam_live()}",
             "",
             "Context",
@@ -208,7 +217,9 @@ class Application(QObject):
         ]
         repo = self.context.state().repo
         if repo is not None:
-            lines.append(f"  repository: {repo.path} ({repo.branch}, {repo.dirty} dirty)")
+            lines.append(
+                f"  repository: {repo.path} ({repo.branch}, {repo.dirty} dirty)"
+            )
 
         lines += ["", "Content candidates (highest priority first)"]
         candidates = self.arbiter.candidates()

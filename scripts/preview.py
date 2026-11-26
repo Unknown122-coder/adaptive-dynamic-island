@@ -19,13 +19,13 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from PySide6.QtCore import QRectF, Qt  # noqa: E402
-from PySide6.QtGui import QColor, QImage, QPainter  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtCore import QRectF, Qt
+from PySide6.QtGui import QColor, QImage, QPainter
+from PySide6.QtWidgets import QApplication
 
-from core.island_window import IslandWindow  # noqa: E402
-from core.model import Action, IslandContent, Priority, Urgency  # noqa: E402
-from core.theme import load_theme  # noqa: E402
+from core.island_window import IslandWindow
+from core.model import Action, IslandContent, Priority, Urgency
+from core.theme import load_theme
 
 OUT = ROOT / "build" / "preview"
 
@@ -216,7 +216,7 @@ def main() -> int:
         window.set_expanded(expanded)
         window.set_content(content, animate=False)
         if content.indeterminate:
-            window._shimmer = 0.45  # noqa: SLF001 - preview tool, deliberate
+            window._shimmer = 0.45
         app.processEvents()
         path = render(window, name)
         written.append(path)

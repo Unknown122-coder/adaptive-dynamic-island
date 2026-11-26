@@ -19,10 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from PySide6.QtCore import QTimer, Qt  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtWidgets import QApplication
 
-from main import Application  # noqa: E402
+from main import Application
 
 
 def main() -> int:
@@ -45,7 +45,7 @@ def main() -> int:
         content = controller.arbiter.current()
 
         print("--- smoke ---")
-        print(controller._diagnostics_text())  # noqa: SLF001 - diagnostic tool
+        print(controller._diagnostics_text())
         print("-------------")
         print(f"window visible : {window.isVisible()}")
         print(f"window geometry: {window.geometry()}")

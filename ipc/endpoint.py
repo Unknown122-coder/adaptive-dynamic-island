@@ -9,6 +9,7 @@ than trusted blindly.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import tempfile
@@ -80,10 +81,8 @@ def discover() -> Endpoint | None:
 
 def clear() -> None:
     """Remove the endpoint file on a clean shutdown."""
-    try:
+    with contextlib.suppress(OSError):
         endpoint_path().unlink()
-    except OSError:
-        pass
 
 
 def fresh_token() -> str:

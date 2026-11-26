@@ -20,6 +20,7 @@ screen until its time-to-live expires.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import socket
 from types import TracebackType
@@ -69,19 +70,15 @@ class IslandClient:
 
     def close(self) -> None:
         if self._reader is not None:
-            try:
+            with contextlib.suppress(OSError):
                 self._reader.close()
-            except OSError:
-                pass
             self._reader = None
         if self._socket is not None:
-            try:
+            with contextlib.suppress(OSError):
                 self._socket.close()
-            except OSError:
-                pass
             self._socket = None
 
-    def __enter__(self) -> "IslandClient":
+    def __enter__(self) -> IslandClient:
         self.connect()
         return self
 
@@ -165,7 +162,7 @@ class Activity:
             self._live = False
             return None
 
-    def start(self) -> "Activity":
+    def start(self) -> Activity:
         result = self._guard(
             self._client.push,
             self.id,
@@ -216,7 +213,7 @@ class Activity:
         self._guard(self._client.done, self.id, status, **fields)
         self._live = False
 
-    def __enter__(self) -> "Activity":
+    def __enter__(self) -> Activity:
         return self.start()
 
     def __exit__(

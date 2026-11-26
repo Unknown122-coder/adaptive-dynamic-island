@@ -23,11 +23,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from PySide6.QtCore import QProcess, QTimer, Qt  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtCore import QProcess, Qt, QTimer
+from PySide6.QtWidgets import QApplication
 
-from main import Application  # noqa: E402
-from core.model import Priority  # noqa: E402
+from core.model import Priority
+from main import Application
 
 PYTHON = sys.executable
 CLI = str(ROOT / "island.py")

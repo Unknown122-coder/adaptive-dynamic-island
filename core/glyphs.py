@@ -17,7 +17,7 @@ Every glyph is drawn on a 24x24 design grid and scaled to the target rect.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
@@ -245,7 +245,7 @@ def _warning(painter: QPainter, _s: float) -> None:
 
 @glyph("wifi-off")
 def _wifi_off(painter: QPainter, _s: float) -> None:
-    for radius, rect in ((0, QRectF(2, 5, 20, 20)), (0, QRectF(6, 9, 12, 12))):
+    for rect in (QRectF(2, 5, 20, 20), QRectF(6, 9, 12, 12)):
         arc = QPainterPath()
         arc.arcMoveTo(rect, 35)
         arc.arcTo(rect, 35, 110)
