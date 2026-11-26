@@ -133,14 +133,26 @@ hundred megabytes of resident memory and add noticeably to startup, so they
 are installed as separate requirement files and imported on first use of
 the feature that needs them, not at startup.
 
-Budgets the project holds itself to:
+Budgets the project holds itself to, and what it currently measures.
+`scripts/measure.py` takes these numbers from the real process and exits
+non-zero when one is exceeded, so the table cannot quietly drift out of
+date.
 
-| Metric | Budget |
-|---|---|
-| Idle resident memory | under 80 MB |
-| Idle CPU | under 0.5% |
-| Cold start to visible pill | under 1.5 s |
-| Morph animation | 60 fps, no dropped frames |
+| Metric | Budget | Measured |
+|---|---|---|
+| Cold start to visible pill | under 1.5 s | 0.22 s |
+| Idle resident memory | under 80 MB | 63.2 MB |
+| Idle CPU | under 0.5% | 0.00% |
+| Morph animation | 60 fps | not yet instrumented |
+
+Measured on a source checkout with the clock, context engine and activity
+server running, sampled over 12 seconds of idle: 15 threads, 402 OS
+handles, and 1.1 MB of growth across the sample. A compiled build should
+come in lower, because the source checkout carries the interpreter and
+uncompiled bytecode.
+
+The idle CPU figure is the point of the event-driven design. A polling
+island cannot reach zero, because it is doing work by construction.
 
 ## Rendering
 

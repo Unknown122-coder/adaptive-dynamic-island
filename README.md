@@ -139,6 +139,7 @@ all themeable, including a custom cubic bezier.
 .venv\Scripts\python.exe scripts/preview.py  # render every UI state to build/preview/
 .venv\Scripts\python.exe scripts/smoke.py    # start the real app, verify, exit
 .venv\Scripts\python.exe scripts/e2e_activity.py  # drive the real CLI against the app
+.venv\Scripts\python.exe scripts/measure.py      # check the performance budgets
 ```
 
 `scripts/preview.py` renders every island state offscreen, so UI changes
