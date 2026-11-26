@@ -1,0 +1,21 @@
+{
+  "_comment": "Shipped defaults. Your own settings live in %APPDATA%/AdaptiveIsland/settings.json and override these; this file is replaced on upgrade.",
+  "theme": "midnight_oled",
+  "display": {
+    "preference": "internal",
+    "horizontal_offset": 0
+  },
+  "behaviour": {
+    "hide_on_fullscreen": true,
+    "start_with_windows": false,
+    "idle_collapse_seconds": 0
+  },
+  "providers": {
+    "clock": true,
+    "context": true,
+    "activities": true,
+    "clipboard": false,
+    "sentinel": false,
+    "privacy": false
+  }
+}
