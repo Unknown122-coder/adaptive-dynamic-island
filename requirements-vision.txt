@@ -1,0 +1,2 @@
+# Privacy Guard (webcam face counting). Lazy-imported on first use, opt-in only.
+opencv-python-headless>=4.9

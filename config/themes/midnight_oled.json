@@ -1,0 +1,48 @@
+{
+  "name": "Midnight OLED",
+  "metrics": {
+    "collapsed_width": 168,
+    "collapsed_height": 30,
+    "expanded_width": 404,
+    "expanded_height": 92,
+    "radius_collapsed": 15,
+    "radius_expanded": 22,
+    "top_inset": 1,
+    "padding_h": 14,
+    "padding_v": 8,
+    "glyph_size": 15,
+    "title_size": 11,
+    "detail_size": 10,
+    "progress_height": 3,
+    "border_width": 1
+  },
+  "motion": {
+    "morph_ms": 340,
+    "morph_curve": "spring",
+    "spring_overshoot": 1.15,
+    "fade_ms": 140,
+    "hover_open_delay_ms": 110,
+    "hover_close_delay_ms": 260
+  },
+  "colors": {
+    "surface": "#0B0B0DF2",
+    "surface_hover": "#15151AF7",
+    "border": "#FFFFFF1F",
+    "text": "#F2F3F5",
+    "text_dim": "#9AA0A8",
+    "glyph": "#E6E8EB",
+    "progress_track": "#FFFFFF1A",
+    "progress_fill": "#5B8CFF",
+    "accent_neutral": "#5B8CFF",
+    "accent_info": "#4CA9FF",
+    "accent_success": "#3FCF8E",
+    "accent_warning": "#F5A524",
+    "accent_critical": "#F5455C",
+    "shadow": "#000000A0"
+  },
+  "effects": {
+    "shadow_blur": 16,
+    "shadow_offset_y": 6,
+    "urgency_edge": true
+  }
+}
