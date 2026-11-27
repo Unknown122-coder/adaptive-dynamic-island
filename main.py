@@ -34,6 +34,7 @@ from ipc.server import ActivityServer
 from workers.ambient import AmbientProvider
 from workers.clipboard_guard import ClipboardGuard
 from workers.dropzone import DropActionProvider
+from workers.privacy_guard import PrivacyGuard
 
 APP_NAME = "Adaptive Dynamic Island"
 
@@ -60,6 +61,9 @@ class Application(QObject):
         self.drops = DropActionProvider(self.arbiter, self)
         self.clipboard = ClipboardGuard(self.arbiter, self.settings, self)
         self.plugins = PluginManager(self.arbiter, self.settings, self)
+        self.privacy = PrivacyGuard(
+            self.arbiter, self.settings, self.foreground, self.consent, self
+        )
         self.activities = ActivityServer(self.arbiter, self.settings, self)
 
         self.tray: TrayController | None = None
@@ -71,6 +75,7 @@ class Application(QObject):
         self.drops.completed.connect(self._on_drop_completed)
         self.clipboard.secret_detected.connect(self._on_secret_detected)
         self.plugins.plugin_failed.connect(self._on_plugin_failed)
+        self.privacy.warning_raised.connect(self._on_privacy_warning)
 
         # Replacing or unplugging a monitor moves the built-in panel's
         # coordinates, so the island has to be re-anchored.
@@ -106,6 +111,9 @@ class Application(QObject):
             self.tray.plugin_toggled.connect(self._on_plugin_toggled)
             self.tray.plugins_reload_requested.connect(self._on_plugins_reload)
             self.tray.set_plugin_source(self.plugins.all)
+            self.tray.privacy_watch_toggled.connect(
+                self.privacy.set_manual_watch
+            )
             self.tray.show()
 
         hooked = self.foreground.start()
@@ -119,6 +127,8 @@ class Application(QObject):
             self.context.start()
         if self.settings.get("providers.clipboard", False):
             self.clipboard.start()
+        if self.settings.get("providers.privacy", False):
+            self.privacy.start()
         if self.settings.get("providers.plugins", True):
             report = self.plugins.discover()
             self.plugins.start_enabled()
@@ -172,12 +182,22 @@ class Application(QObject):
             self.activities.start() if enabled else self.activities.stop()
         elif key == "clipboard":
             self.clipboard.start() if enabled else self.clipboard.stop()
+        elif key == "privacy":
+            if enabled:
+                if not self.privacy.start() and self.tray is not None:
+                    self.tray.notify(
+                        APP_NAME,
+                        f"Privacy guard: {self.privacy.state().error}",
+                    )
+            else:
+                self.privacy.stop()
         elif key == "plugins":
             if enabled:
                 self.plugins.discover()
                 self.plugins.start_enabled()
             else:
-                self.plugins.unload_all()
+                self.privacy.stop()
+        self.plugins.unload_all()
         # "drop" needs no start or stop: it is driven entirely by the
         # window's drop events and the setting is read when one arrives.
         # Remaining providers are wired as they are implemented; the menu
@@ -196,6 +216,15 @@ class Application(QObject):
                 first = report.rejected[0]
                 message += f" — {first[0]}: {first[1]}"
             self.tray.notify(APP_NAME, f"Plugins rescanned: {message}")
+
+    def _on_privacy_warning(self, kind: str) -> None:
+        if self.tray is not None:
+            label = (
+                "Someone may be looking over your shoulder."
+                if kind == "shoulder-surfing"
+                else "You appear to have stepped away."
+            )
+            self.tray.notify(APP_NAME, label)
 
     def _on_plugin_failed(self, plugin_id: str, message: str) -> None:
         if self.tray is not None:
@@ -276,6 +305,7 @@ class Application(QObject):
                 f"  repository: {repo.path} ({repo.branch}, {repo.dirty} dirty)"
             )
 
+        lines += ["", "Privacy guard", self.privacy.describe()]
         lines += ["", "Plugins", self.plugins.describe()]
         lines += ["", "Content candidates (highest priority first)"]
         candidates = self.arbiter.candidates()

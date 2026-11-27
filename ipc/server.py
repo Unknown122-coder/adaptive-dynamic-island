@@ -175,9 +175,7 @@ class ActivityServer(QObject):
         return protocol.error(f"unhandled op {command.op!r}")
 
     def _do_push(self, command: protocol.Command) -> str:
-        ttl = command.ttl or float(
-            self._settings.get("activities.stale_seconds", 90)
-        )
+        ttl = command.ttl or self._settings.number("activities.stale_seconds", 90)
         urgency = _URGENCY_BY_NAME.get(
             command.urgency or "neutral", Urgency.NEUTRAL
         )
@@ -199,8 +197,8 @@ class ActivityServer(QObject):
 
     def _do_done(self, command: protocol.Command) -> str:
         status = command.status or "ok"
-        linger = float(
-            self._settings.get("activities.completed_linger_seconds", 6)
+        linger = self._settings.number(
+            "activities.completed_linger_seconds", 6
         )
         content = IslandContent(
             key=self._handle.key(command.id),

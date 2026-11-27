@@ -73,6 +73,7 @@ class TrayController(QObject):
     quit_requested = Signal()
     plugin_toggled = Signal(str, bool)
     plugins_reload_requested = Signal()
+    privacy_watch_toggled = Signal(bool)
     visibility_toggled = Signal(bool)
     provider_toggled = Signal(str, bool)
     theme_selected = Signal(str)
@@ -92,6 +93,7 @@ class TrayController(QObject):
         self._theme = theme
         self._visible = True
         self._plugin_source = None
+        self._watching = False
 
         self._tray = QSystemTrayIcon(build_icon(theme), self)
         self._tray.setToolTip("Adaptive Dynamic Island")
@@ -149,6 +151,18 @@ class TrayController(QObject):
 
         menu.addSeparator()
 
+        self._watch_action = QAction("Watch now (privacy guard)", menu)
+        self._watch_action.setCheckable(True)
+        self._watch_action.setChecked(self._watching)
+        self._watch_action.setEnabled(
+            bool(self._settings.get("providers.privacy", False))
+        )
+        self._watch_action.setToolTip(
+            "Open the camera and watch for onlookers until switched off"
+        )
+        self._watch_action.toggled.connect(self.privacy_watch_toggled.emit)
+        menu.addAction(self._watch_action)
+
         recenter = QAction("Re-centre on this display", menu)
         recenter.triggered.connect(self.reposition_requested.emit)
         menu.addAction(recenter)
@@ -203,6 +217,15 @@ class TrayController(QObject):
         except Exception as exc:  # the menu must still open
             print(f"[tray] could not list plugins: {exc}")
             return []
+
+    def set_watching(self, watching: bool) -> None:
+        """Reflect the guard's real state, which can change without the menu."""
+        self._watching = watching
+        action = getattr(self, "_watch_action", None)
+        if action is not None:
+            action.blockSignals(True)
+            action.setChecked(watching)
+            action.blockSignals(False)
 
     def set_plugin_source(self, source) -> None:
         """Give the tray a callable returning the loaded plugin list."""

@@ -186,6 +186,48 @@ Python in the island's process with the user's privileges. The
 documentation says so rather than implying a sandbox, because a security
 boundary that does not exist is worse than no claim at all.
 
+## The privacy guard, and restraint as a design
+
+The camera feature is the one with the most ways to go wrong, so almost
+every decision in it is a decision not to do something.
+
+It does not run unless enabled. It does not import OpenCV until then. It
+does not open the camera unless a nominated app is in front or the user
+explicitly asked. It does not arm at all if another application is using
+the webcam, and disarms if one starts, because taking the camera from a
+video call is a worse outcome than missing a shoulder surfer. It does not
+act on a single frame. It does not lock the machine by itself. It does not
+download its own model.
+
+The two mechanisms worth naming:
+
+**Hysteresis in both directions.** A warning needs several consecutive
+agreeing frames, and clearing one needs several too. Without it, a
+reflection or a poster interrupts the user once and the feature gets
+disabled, at which point it protects nothing. This is the same asymmetry
+as credential detection: the expensive failure is the false positive.
+
+**A dismissal cooldown.** Dismissing a warning that is still true would
+otherwise bring it straight back, which teaches people to switch the
+feature off rather than use it.
+
+Only a face count and a size ratio cross the worker thread boundary. No
+frame is retained, written, displayed or transmitted.
+
+### A settings bug worth remembering
+
+Written while building this feature:
+
+```python
+seconds = settings.get("privacy.walk_away_seconds", 60) or 60
+```
+
+Zero is falsy, so a user setting the value to 0 to switch walk-away
+detection off silently got 60 back. Every "this setting does nothing" bug
+report starts here. `Settings.number()` and `Settings.integer()` now
+handle the fallback properly, and the pattern was removed everywhere it
+had been copied to.
+
 ## Credential detection
 
 The clipboard guard exists because Windows clipboard history makes a

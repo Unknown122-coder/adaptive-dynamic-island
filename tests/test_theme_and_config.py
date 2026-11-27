@@ -141,6 +141,40 @@ def test_save_leaves_no_temporary_files(tmp_path):
     assert leftovers == []
 
 
+def test_zero_is_kept_not_replaced_by_the_default(tmp_path):
+    # The shorthand `get(key, default) or default` silently turns a user's
+    # explicit 0 back into the default, so a setting used to switch a
+    # feature off does nothing. This is the guard against that.
+    settings = make_settings(tmp_path)
+    settings.set("privacy.walk_away_seconds", 0)
+    assert settings.number("privacy.walk_away_seconds", 60) == 0.0
+    assert settings.integer("privacy.walk_away_seconds", 60) == 0
+
+
+def test_number_falls_back_when_missing(tmp_path):
+    settings = make_settings(tmp_path)
+    assert settings.number("nothing.here", 2.5) == 2.5
+
+
+def test_number_falls_back_on_junk(tmp_path):
+    settings = make_settings(tmp_path)
+    settings.set("privacy.frames_per_second", "fast")
+    assert settings.number("privacy.frames_per_second", 1.0) == 1.0
+
+
+def test_number_rejects_booleans(tmp_path):
+    # True would otherwise quietly become 1.0 and look like a valid rate.
+    settings = make_settings(tmp_path)
+    settings.set("privacy.frames_per_second", True)
+    assert settings.number("privacy.frames_per_second", 4.0) == 4.0
+
+
+def test_number_accepts_a_numeric_string(tmp_path):
+    settings = make_settings(tmp_path)
+    settings.set("privacy.walk_away_seconds", "90")
+    assert settings.number("privacy.walk_away_seconds", 60) == 90.0
+
+
 def test_privacy_is_off_by_default():
     # Anything that opens the camera must be opt-in.
     assert config.DEFAULTS["privacy"]["enabled"] is False

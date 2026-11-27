@@ -75,7 +75,7 @@ class ClipboardGuard(QObject):
         self._handle = ProviderHandle(arbiter, "clipboard")
         self._settings = settings
         self._entries: deque[Entry] = deque(
-            maxlen=int(settings.get("clipboard.stack_size", 5))
+            maxlen=settings.integer("clipboard.stack_size", 5)
         )
         self._running = False
         self._suppress_next = False
@@ -207,7 +207,7 @@ class ClipboardGuard(QObject):
             else Urgency.WARNING
         )
 
-        seconds = float(self._settings.get("clipboard.auto_wipe_seconds", 0) or 0)
+        seconds = self._settings.number("clipboard.auto_wipe_seconds", 0)
         actions = [Action("Wipe now", self.wipe, destructive=False)]
         if seconds > 0:
             self._auto_wipe.start(int(seconds * 1000))

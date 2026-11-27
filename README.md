@@ -67,8 +67,8 @@ Early development, and honest about it.
 | Drop-to-Action OCR, compression, conversion | working |
 | Clipboard stack with secret masking | working |
 | Plugin loader and sample plugins | working |
+| Privacy guard | working |
 | System and network alerts | not started |
-| Privacy guard | not started |
 | Installer | not started |
 
 ## Requirements
@@ -209,6 +209,37 @@ you install it.
 
 [docs/plugins.md](docs/plugins.md) is the full authoring guide.
 
+## Privacy guard
+
+Optional, off by default, and needs two deliberate steps to enable:
+
+```
+.venv\Scripts\python.exe -m pip install -r requirements-vision.txt
+.venv\Scripts\python.exe scripts/fetch_yunet.py
+```
+
+![A shoulder-surfing warning](docs/images/privacy-warning.png)
+
+The camera opens only while a password manager is in front, or while you
+switch on "Watch now" in the tray. The rest of the time the device is
+closed and the light is off.
+
+It yields the camera. Before arming, and continuously afterwards, the
+guard checks whether another application is using the webcam, and backs
+off if one is. Taking the camera from a video call would be a worse
+outcome than missing a shoulder surfer.
+
+Warnings need several consecutive frames agreeing, in both directions, so
+one odd frame can neither interrupt you nor silence a real warning. It
+never locks anything by itself; walk-away offers a button and stops there.
+
+A face count and a size ratio are the only things that leave the worker
+thread. No frame is stored, written to disk, shown, or sent anywhere, and
+the island never downloads anything on its own.
+
+[docs/privacy-guard.md](docs/privacy-guard.md) covers the settings and
+the honest limits.
+
 ## Themes
 
 Themes are JSON files in `config/themes/`, or your own in
@@ -231,6 +262,7 @@ all themeable, including a custom cubic bezier.
 .venv\Scripts\python.exe scripts/e2e_drop.py      # drive a real drop through the app
 .venv\Scripts\python.exe scripts/e2e_clipboard.py # drive the real clipboard
 .venv\Scripts\python.exe scripts/e2e_plugins.py   # load and contain real plugins
+.venv\Scripts\python.exe scripts/check_vision.py  # camera and face detection
 .venv\Scripts\python.exe scripts/check_media.py   # OCR, compression and conversion
 .venv\Scripts\python.exe scripts/measure.py       # check the performance budgets
 ```

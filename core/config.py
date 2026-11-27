@@ -107,10 +107,34 @@ DEFAULTS: dict[str, Any] = {
     },
     "privacy": {
         "enabled": False,
-        # Only sample the webcam while one of these is in front.
-        "sensitive_processes": [],
+        # The camera is opened only while one of these is the foreground
+        # window, or while the user has explicitly asked the guard to
+        # watch. Password managers are the defensible default: the moment
+        # a vault is open is exactly when a second pair of eyes matters.
+        "sensitive_processes": [
+            "1password.exe",
+            "bitwarden.exe",
+            "keepass.exe",
+            "keepassxc.exe",
+            "lastpass.exe",
+            "dashlane.exe",
+            "enpass.exe",
+            "protonpass.exe",
+        ],
         "frames_per_second": 1.0,
+        # How many faces constitute "you are not alone".
+        "faces_to_warn": 2,
+        # Consecutive agreeing frames needed to raise and to clear a
+        # warning. Hysteresis in both directions, so one bad frame can
+        # neither interrupt the user nor silence a real warning.
+        "confirm_frames": 3,
+        "clear_frames": 2,
+        # 0 disables walk-away detection entirely.
         "walk_away_seconds": 60,
+        # How long a dismissed warning stays quiet. Without this, a
+        # dismissed warning that is still true reappears at once, which
+        # teaches people to turn the feature off.
+        "dismiss_cooldown_seconds": 120,
     },
     "advanced": {
         "log_level": "INFO",
@@ -184,6 +208,25 @@ class Settings:
 
     def as_dict(self) -> dict[str, Any]:
         return copy.deepcopy(self._data)
+
+    def number(self, dotted: str, default: float) -> float:
+        """A numeric setting, falling back only when it is missing or junk.
+
+        The obvious shorthand, ``settings.get(key, default) or default``,
+        is wrong and silently so: zero is falsy, so a user who sets a
+        threshold to 0 to switch something off gets the default back
+        instead. Every "this setting does nothing" bug report starts here.
+        """
+        value = self.get(dotted, None)
+        if value is None or isinstance(value, bool):
+            return float(default)
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(default)
+
+    def integer(self, dotted: str, default: int) -> int:
+        return int(self.number(dotted, float(default)))
 
     def lowered_list(self, dotted: str) -> set[str]:
         """A settings list normalised for case-insensitive matching."""

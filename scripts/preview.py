@@ -105,15 +105,30 @@ def states() -> list[tuple[str, IslandContent, bool]]:
             True,
         ),
         (
-            "06-privacy-critical",
+            "06-privacy-watching",
+            IslandContent(
+                key="privacy.indicator",
+                priority=Priority.AMBIENT,
+                title="Privacy guard watching",
+                detail="1 person in view",
+                glyph="eye",
+                collapsed="watching",
+            ),
+            False,
+        ),
+        (
+            "06b-privacy-critical",
             IslandContent(
                 key="privacy.shoulder",
                 priority=Priority.PRIVACY,
-                title="Second face detected",
+                title="1 other person in view",
                 detail="someone may be reading over your shoulder",
                 glyph="faces",
                 urgency=Urgency.CRITICAL,
-                actions=(Action("Dismiss", lambda: None),),
+                actions=(
+                    Action("Dismiss", lambda: None),
+                    Action("Lock now", lambda: None),
+                ),
                 auto_expand=True,
             ),
             True,
