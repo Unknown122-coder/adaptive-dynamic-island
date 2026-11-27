@@ -158,6 +158,45 @@ someone's only copy of a file:
 - An output larger than its input is discarded and reported as "already
   optimal", rather than written and announced as a saving.
 
+## Credential detection
+
+The clipboard guard exists because Windows clipboard history makes a
+secret worse rather than better. Detection therefore has to be good enough
+that people leave it switched on, and that constraint shapes every rule.
+
+There are two failure modes and they are not symmetric. A **miss** shows a
+token on screen, which leaves the user no worse off than Win+V already
+does. A **false positive** cries wolf over ordinary text, and after the
+second one the feature gets disabled, at which point it protects nothing.
+False positives are the expensive failure.
+
+So the rules follow one principle: **prefer an issuer's prefix over a
+shape**. `ghp_`, `AKIA`, `xoxb-`, `AIza` and `sk-ant-` are close to
+impossible to produce by accident. A rule matching "forty characters of
+base64" instead fires on commit hashes, UUIDs, sha256 digests, base64
+image data and minified JavaScript, all of which genuinely sit on a
+developer's clipboard. Where an issuer offers no prefix, the rule requires
+a nearby keyword and an assignment, so `DB_PASSWORD=hunter2` fires and "I
+forgot my password again" does not.
+
+Two details that came out of testing rather than design:
+
+- The keyword rule uses a lookbehind rather than `\b`. A word boundary
+  does not fire inside `DB_PASSWORD` or `APP_CLIENT_SECRET`, because an
+  underscore is a word character, and prefixed names are the single most
+  common shape in a `.env` file.
+- Values that match a shape but are obviously placeholders, such as
+  `changeme`, `<your_api_key>` or `xxxxxxxx`, are filtered out. Flagging
+  example configuration teaches users to dismiss the warning, which is
+  exactly the habit the feature cannot afford.
+
+A match records a rule id, a severity and the offsets. It never retains
+the matched text, and the masked preview is a fixed-width run of dots.
+Revealing the last four characters is common practice and is a real leak:
+it narrows a brute force and is enough to confirm a guessed credential.
+The label already names the service, which is the only thing the user
+needs in order to act.
+
 ## Keeping the process small
 
 The island is meant to be left running, so the base process never imports

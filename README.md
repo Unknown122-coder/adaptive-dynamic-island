@@ -65,7 +65,7 @@ Early development, and honest about it.
 | Context profiles: meeting, developer | working |
 | System tray, diagnostics, settings | working |
 | Drop-to-Action OCR, compression, conversion | working |
-| Clipboard stack with secret masking | not started |
+| Clipboard stack with secret masking | working |
 | System and network alerts | not started |
 | Privacy guard | not started |
 | Plugin loader | not started |
@@ -145,6 +145,36 @@ discarded and the island says the file was already optimal.
 OCR needs the optional feature pack. Without it the other actions still
 work and the island says why text extraction is unavailable.
 
+## Clipboard guard
+
+Off by default; turn it on from the tray menu.
+
+Windows already has a clipboard history, so copying one would be
+pointless. What Win+V does not do is treat a credential as hazardous. It
+remembers the token you pasted into a terminal, and with clipboard sync
+switched on that history leaves the machine.
+
+![A credential warning on the island](docs/images/clipboard-secret.png)
+
+When a copy looks like a credential, the island refuses to display it,
+keeps it out of the stack, and offers to clear the clipboard. It can also
+clear it automatically after a timeout, which is off by default because
+silently wiping something you were about to paste is its own failure.
+
+For ordinary copies it tells you what you actually copied: a hex colour
+shows its swatch, a unix timestamp shows the date, and malformed JSON is
+flagged immediately rather than at the moment you paste it.
+
+The stack is memory only. Nothing is written to disk, which is the point,
+and also the reason this is not a general clipboard manager: close the
+island and the stack is gone.
+
+Detection favours an issuer's own prefix over a generic shape. A rule that
+matches "forty characters of base64" fires on commit hashes, UUIDs and
+minified JavaScript, and a leak detector that cries wolf gets switched off
+within a day. Where no prefix exists, a rule needs a nearby keyword such
+as `DB_PASSWORD=` rather than matching the value alone.
+
 ## Themes
 
 Themes are JSON files in `config/themes/`, or your own in
@@ -165,6 +195,7 @@ all themeable, including a custom cubic bezier.
 .venv\Scripts\python.exe scripts/smoke.py    # start the real app, verify, exit
 .venv\Scripts\python.exe scripts/e2e_activity.py  # drive the real CLI against the app
 .venv\Scripts\python.exe scripts/e2e_drop.py      # drive a real drop through the app
+.venv\Scripts\python.exe scripts/e2e_clipboard.py # drive the real clipboard
 .venv\Scripts\python.exe scripts/check_media.py   # OCR, compression and conversion
 .venv\Scripts\python.exe scripts/measure.py       # check the performance budgets
 ```

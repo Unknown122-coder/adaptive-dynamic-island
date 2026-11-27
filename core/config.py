@@ -43,6 +43,15 @@ DEFAULTS: dict[str, Any] = {
         "sentinel": False,
         "privacy": False,
     },
+    "clipboard": {
+        # How many recent items to keep. Memory only; never written to disk.
+        "stack_size": 5,
+        # Seconds before the clipboard is cleared automatically after a
+        # credential is copied. 0 disables it and offers a manual wipe
+        # instead, which is the safer default: silently clearing something
+        # the user is about to paste would be its own failure.
+        "auto_wipe_seconds": 0,
+    },
     "drop": {
         # Copy extracted text to the clipboard automatically. Off would mean
         # the user has to click, which defeats the point of a drag.

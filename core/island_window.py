@@ -513,6 +513,10 @@ class IslandWindow(QWidget):
         content = self._content
         if content is None:
             return self._theme.color("accent_neutral")
+        if content.accent:
+            exact = QColor(content.accent)
+            if exact.isValid():
+                return exact
         return self._theme.accent_for(Urgency(content.urgency).name)
 
     def paintEvent(self, event) -> None:

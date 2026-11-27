@@ -79,6 +79,10 @@ class IslandContent:
     # 0.0-1.0 for a determinate bar, -1.0 for indeterminate, None for no bar.
     progress: float | None = None
     urgency: Urgency = Urgency.NEUTRAL
+    # Overrides the urgency colour with an exact one, as "#RRGGBB". Used
+    # when the colour *is* the content, such as a copied hex value, where
+    # showing the theme accent instead would defeat the point.
+    accent: str | None = None
     actions: tuple[Action, ...] = field(default_factory=tuple)
     # Text for the collapsed pill. Falls back to ``title`` when unset.
     collapsed: str | None = None

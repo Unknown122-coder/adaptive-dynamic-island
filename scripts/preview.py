@@ -151,7 +151,37 @@ def states() -> list[tuple[str, IslandContent, bool]]:
             True,
         ),
         (
-            "09-meeting-success",
+            "09-clipboard-colour",
+            IslandContent(
+                key="clipboard.copied",
+                priority=Priority.CONTEXT,
+                title="#5B8CFF",
+                detail="blue",
+                glyph="sparkle",
+                accent="#5B8CFF",
+                collapsed="#5B8CFF",
+            ),
+            False,
+        ),
+        (
+            "10-clipboard-secret",
+            IslandContent(
+                key="clipboard.secret",
+                priority=Priority.ALERT,
+                title="AWS access key copied",
+                detail="hidden from the island and from the stack",
+                glyph="key",
+                urgency=Urgency.CRITICAL,
+                actions=(
+                    Action("Keep", lambda: None),
+                    Action("Wipe now", lambda: None),
+                ),
+                auto_expand=True,
+            ),
+            True,
+        ),
+        (
+            "11-meeting-success",
             IslandContent(
                 key="context.meeting",
                 priority=Priority.CONTEXT,

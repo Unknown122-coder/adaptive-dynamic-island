@@ -31,6 +31,7 @@ from core.theme import load_theme
 from core.tray import TrayController
 from ipc.server import ActivityServer
 from workers.ambient import AmbientProvider
+from workers.clipboard_guard import ClipboardGuard
 from workers.dropzone import DropActionProvider
 
 APP_NAME = "Adaptive Dynamic Island"
@@ -56,6 +57,7 @@ class Application(QObject):
         )
         self.ambient = AmbientProvider(self.arbiter, parent=self)
         self.drops = DropActionProvider(self.arbiter, self)
+        self.clipboard = ClipboardGuard(self.arbiter, self.settings, self)
         self.activities = ActivityServer(self.arbiter, self.settings, self)
 
         self.tray: TrayController | None = None
@@ -65,6 +67,7 @@ class Application(QObject):
         self.context.fullscreen_changed.connect(self._on_fullscreen)
         self.window.files_dropped.connect(self._on_files_dropped)
         self.drops.completed.connect(self._on_drop_completed)
+        self.clipboard.secret_detected.connect(self._on_secret_detected)
 
         # Replacing or unplugging a monitor moves the built-in panel's
         # coordinates, so the island has to be re-anchored.
@@ -108,6 +111,8 @@ class Application(QObject):
             self.ambient.start()
         if self.settings.get("providers.context", True):
             self.context.start()
+        if self.settings.get("providers.clipboard", False):
+            self.clipboard.start()
         if self.settings.get("providers.activities", True) and (
             self.activities.start()
         ):
@@ -155,6 +160,8 @@ class Application(QObject):
             self.context.start() if enabled else self.context.stop()
         elif key == "activities":
             self.activities.start() if enabled else self.activities.stop()
+        elif key == "clipboard":
+            self.clipboard.start() if enabled else self.clipboard.stop()
         # "drop" needs no start or stop: it is driven entirely by the
         # window's drop events and the setting is read when one arrives.
         # Remaining providers are wired as they are implemented; the menu
@@ -182,6 +189,15 @@ class Application(QObject):
         if not self.settings.get("providers.drop", True):
             return
         self.drops.handle_drop([str(p) for p in paths_dropped])
+
+    def _on_secret_detected(self, label: str) -> None:
+        # No notification body: a toast is rendered by Windows and could
+        # outlive the island's own warning, so it says what happened
+        # without repeating anything sensitive.
+        if self.tray is not None:
+            self.tray.notify(
+                APP_NAME, f"{label} detected on the clipboard and hidden."
+            )
 
     def _on_drop_completed(self, summary: str) -> None:
         # The island's result state expires after a few seconds, so a tray
@@ -247,6 +263,7 @@ class Application(QObject):
 
     def shutdown(self) -> None:
         self.activities.stop()
+        self.clipboard.stop()
         self.ambient.stop()
         self.context.stop()
         self.consent.stop()
