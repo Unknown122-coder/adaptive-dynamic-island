@@ -186,6 +186,43 @@ Python in the island's process with the user's privileges. The
 documentation says so rather than implying a sandbox, because a security
 boundary that does not exist is worse than no claim at all.
 
+## System alerts, and the cost of sampling
+
+The sentinel is the one provider that must look at the whole machine, so
+it is also the one where the cost of looking matters.
+
+Measured on a real machine:
+
+| Operation | Cost |
+|---|---|
+| `cpu_percent` + `virtual_memory` | 0.1 ms |
+| network interface enumeration | 6 ms |
+| full process scan with per-process CPU | 350 ms |
+
+Those numbers dictated the design. The process scan runs only after the
+cheap global CPU reading has already said something is wrong, so the
+healthy path never pays for it. And all sampling runs on a worker thread,
+because 350 ms on the GUI thread would freeze the island's animation for a
+third of a second every time the CPU spiked. Only the finished snapshot
+crosses back, and the decisions are made on the GUI thread where the
+arbiter lives.
+
+Two details that are easy to get wrong:
+
+- **Per-process CPU is relative to one core.** A process can report 400%
+  on a four-core machine. Dividing by the core count is what makes the
+  figure match the number Task Manager shows, which is the number the
+  user will compare it against.
+- **Per-process counters need priming.** The first reading after
+  attaching to a process is meaningless, so the first scan primes and
+  reports nothing. The sustained-condition requirement absorbs that
+  naturally.
+
+Network state is read from local interface data and sends no traffic. An
+adapter counts as connected only when it is up *and* holds a real IPv4
+address: a 169.254 address means the DHCP lease failed, which looks
+connected to a naive check and is not.
+
 ## The privacy guard, and restraint as a design
 
 The camera feature is the one with the most ways to go wrong, so almost

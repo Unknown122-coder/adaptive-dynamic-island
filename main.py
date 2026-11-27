@@ -35,6 +35,7 @@ from workers.ambient import AmbientProvider
 from workers.clipboard_guard import ClipboardGuard
 from workers.dropzone import DropActionProvider
 from workers.privacy_guard import PrivacyGuard
+from workers.sentinel import SystemSentinel
 
 APP_NAME = "Adaptive Dynamic Island"
 
@@ -61,6 +62,7 @@ class Application(QObject):
         self.drops = DropActionProvider(self.arbiter, self)
         self.clipboard = ClipboardGuard(self.arbiter, self.settings, self)
         self.plugins = PluginManager(self.arbiter, self.settings, self)
+        self.sentinel = SystemSentinel(self.arbiter, self.settings, self)
         self.privacy = PrivacyGuard(
             self.arbiter, self.settings, self.foreground, self.consent, self
         )
@@ -76,6 +78,7 @@ class Application(QObject):
         self.clipboard.secret_detected.connect(self._on_secret_detected)
         self.plugins.plugin_failed.connect(self._on_plugin_failed)
         self.privacy.warning_raised.connect(self._on_privacy_warning)
+        self.sentinel.alert_raised.connect(self._on_system_alert)
 
         # Replacing or unplugging a monitor moves the built-in panel's
         # coordinates, so the island has to be re-anchored.
@@ -127,6 +130,8 @@ class Application(QObject):
             self.context.start()
         if self.settings.get("providers.clipboard", False):
             self.clipboard.start()
+        if self.settings.get("providers.sentinel", False):
+            self.sentinel.start()
         if self.settings.get("providers.privacy", False):
             self.privacy.start()
         if self.settings.get("providers.plugins", True):
@@ -173,35 +178,44 @@ class Application(QObject):
         self._user_hidden = not visible
         self._refresh_window()
 
+    def _start_plugins(self) -> None:
+        self.plugins.discover()
+        self.plugins.start_enabled()
+
+    def _start_privacy(self) -> None:
+        if not self.privacy.start() and self.tray is not None:
+            self.tray.notify(
+                APP_NAME, f"Privacy guard: {self.privacy.state().error}"
+            )
+
+    def _provider_switches(self) -> dict:
+        """Map each toggleable provider to its start and stop calls.
+
+        A table rather than a chain of branches. An earlier version of
+        this method was an if/elif ladder, and an edit landed a line at
+        the wrong indentation inside it: the result still parsed, still
+        passed the tests, and quietly unloaded every plugin whenever any
+        feature was toggled. A table has nowhere for a stray statement to
+        hide.
+
+        "drop" is absent on purpose: it is driven entirely by the window's
+        drop events and reads its setting when one arrives.
+        """
+        return {
+            "clock": (self.ambient.start, self.ambient.stop),
+            "context": (self.context.start, self.context.stop),
+            "activities": (self.activities.start, self.activities.stop),
+            "clipboard": (self.clipboard.start, self.clipboard.stop),
+            "sentinel": (self.sentinel.start, self.sentinel.stop),
+            "privacy": (self._start_privacy, self.privacy.stop),
+            "plugins": (self._start_plugins, self.plugins.unload_all),
+        }
+
     def _on_provider_toggled(self, key: str, enabled: bool) -> None:
-        if key == "clock":
-            self.ambient.start() if enabled else self.ambient.stop()
-        elif key == "context":
-            self.context.start() if enabled else self.context.stop()
-        elif key == "activities":
-            self.activities.start() if enabled else self.activities.stop()
-        elif key == "clipboard":
-            self.clipboard.start() if enabled else self.clipboard.stop()
-        elif key == "privacy":
-            if enabled:
-                if not self.privacy.start() and self.tray is not None:
-                    self.tray.notify(
-                        APP_NAME,
-                        f"Privacy guard: {self.privacy.state().error}",
-                    )
-            else:
-                self.privacy.stop()
-        elif key == "plugins":
-            if enabled:
-                self.plugins.discover()
-                self.plugins.start_enabled()
-            else:
-                self.privacy.stop()
-        self.plugins.unload_all()
-        # "drop" needs no start or stop: it is driven entirely by the
-        # window's drop events and the setting is read when one arrives.
-        # Remaining providers are wired as they are implemented; the menu
-        # already persists their setting so nothing is lost in the meantime.
+        switches = self._provider_switches().get(key)
+        if switches is not None:
+            start, stop = switches
+            (start if enabled else stop)()
         self._refresh_window()
 
     def _on_plugin_toggled(self, plugin_id: str, enabled: bool) -> None:
@@ -216,6 +230,10 @@ class Application(QObject):
                 first = report.rejected[0]
                 message += f" — {first[0]}: {first[1]}"
             self.tray.notify(APP_NAME, f"Plugins rescanned: {message}")
+
+    def _on_system_alert(self, _kind: str, message: str) -> None:
+        if self.tray is not None:
+            self.tray.notify(APP_NAME, message)
 
     def _on_privacy_warning(self, kind: str) -> None:
         if self.tray is not None:
@@ -305,6 +323,7 @@ class Application(QObject):
                 f"  repository: {repo.path} ({repo.branch}, {repo.dirty} dirty)"
             )
 
+        lines += ["", "System sentinel", self.sentinel.describe()]
         lines += ["", "Privacy guard", self.privacy.describe()]
         lines += ["", "Plugins", self.plugins.describe()]
         lines += ["", "Content candidates (highest priority first)"]
@@ -326,8 +345,13 @@ class Application(QObject):
     # ---- shutdown ----------------------------------------------------
 
     def shutdown(self) -> None:
-        self.activities.stop()
+        # Order matters: anything owning a thread or a device goes first,
+        # so the camera is released and the worker joined before Qt starts
+        # tearing objects down underneath them.
+        self.privacy.stop()
+        self.sentinel.stop()
         self.plugins.unload_all()
+        self.activities.stop()
         self.clipboard.stop()
         self.ambient.stop()
         self.context.stop()

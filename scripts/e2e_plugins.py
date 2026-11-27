@@ -49,6 +49,7 @@ class Scenario:
             self.step_priority_cap,
             self.step_deactivate,
             self.step_bad_plugin,
+            self.step_toggle_isolation,
         ]
         self.index = 0
 
@@ -263,6 +264,42 @@ class Scenario:
         content = self.current()
         log.append(f"  -> island still showing {content.key if content else None}")
         check(content is not None, "the island still has content to show")
+        self.next_step()
+
+
+    def step_toggle_isolation(self) -> None:
+        """Toggling one feature must not disturb another.
+
+        This exists because of a real bug: an edit landed a statement at
+        the wrong indentation in the provider-toggle ladder, so switching
+        any feature on or off also unloaded every plugin. It parsed, the
+        unit tests passed, and the plugin end-to-end test passed too,
+        because none of them went through the tray's code path.
+        """
+        log.append("\n7. toggling one feature leaves the others alone")
+        manager = self.controller.plugins
+        manager.discover([ROOT / "plugins"])
+        manager.set_enabled("pomodoro", True)
+        check(manager.active_ids() == ["pomodoro"], "pomodoro is active")
+
+        for feature in ("clipboard", "clock", "context", "sentinel"):
+            self.controller._on_provider_toggled(feature, True)
+            self.controller._on_provider_toggled(feature, False)
+        check(
+            manager.active_ids() == ["pomodoro"],
+            f"plugins survived toggling other features "
+            f"(active: {manager.active_ids()})",
+        )
+
+        self.controller._on_provider_toggled("plugins", False)
+        check(
+            manager.active_ids() == [],
+            "toggling plugins off does unload them",
+        )
+        check(
+            self.controller.privacy.state().enabled is False,
+            "and did not leave the privacy guard running",
+        )
         self.next_step()
 
 

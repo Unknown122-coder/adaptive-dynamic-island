@@ -67,8 +67,8 @@ Early development, and honest about it.
 | Drop-to-Action OCR, compression, conversion | working |
 | Clipboard stack with secret masking | working |
 | Plugin loader and sample plugins | working |
+| System and network alerts | working |
 | Privacy guard | working |
-| System and network alerts | not started |
 | Installer | not started |
 
 ## Requirements
@@ -208,6 +208,30 @@ one. A plugin is ordinary Python with your privileges. Read one before
 you install it.
 
 [docs/plugins.md](docs/plugins.md) is the full authoring guide.
+
+## System alerts
+
+Off by default; turn it on from the tray menu.
+
+![A CPU alert on the island](docs/images/cpu-alert.png)
+
+Task Manager already lists processes and Windows already shows a network
+icon. What neither does is tell you without being asked. This is quiet
+while the machine is healthy and speaks only when something has been
+wrong for long enough to matter: a process pinning the CPU, memory
+pressure, a disk filling up, or the network going away.
+
+Every condition has to persist for several seconds first. A compiler
+pinning the CPU for two seconds is normal; the same thing for fifteen is
+worth knowing. **Mute 10 min** silences everything, and **End task** is
+confirm-on-second-click, because the island sits where your cursor
+travels and ending the wrong process loses work. Set
+`sentinel.offer_end_task` to false to remove that button entirely.
+
+Network state is read from local interface data and sends no traffic. An
+adapter counts as connected when it is up and holds a real IPv4 address,
+so a 169.254 address from a failed DHCP lease reads as the disconnection
+it actually is.
 
 ## Privacy guard
 

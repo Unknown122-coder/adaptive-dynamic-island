@@ -101,9 +101,22 @@ DEFAULTS: dict[str, Any] = {
         "completed_linger_seconds": 6,
     },
     "sentinel": {
+        "sample_interval_seconds": 3,
+        # Whole-machine percentages, matching the way Task Manager reports
+        # them rather than the per-core figure psutil returns.
         "cpu_percent": 85,
         "cpu_sustain_seconds": 10,
-        "sample_interval_seconds": 2,
+        "memory_percent": 92,
+        "memory_sustain_seconds": 15,
+        # Long enough that a Wi-Fi roam between access points does not
+        # announce an outage that lasted two seconds.
+        "network_sustain_seconds": 6,
+        # 0 disables the disk check.
+        "disk_free_percent": 5,
+        "mute_minutes": 10,
+        # The End task button is confirm-on-second-click. Set false to
+        # remove it entirely and keep the alert informational.
+        "offer_end_task": True,
     },
     "privacy": {
         "enabled": False,
