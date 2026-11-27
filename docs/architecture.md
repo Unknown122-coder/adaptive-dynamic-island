@@ -125,6 +125,39 @@ block runs elsewhere:
 A late result is dropped rather than displayed: if the user has alt-tabbed
 away before a Git probe finishes, showing that branch would be wrong.
 
+### A trap worth naming
+
+A `QRunnable` carries its own signal object, because `QRunnable` is not a
+`QObject` and cannot emit anything itself. With `setAutoDelete(True)`, Qt
+destroys the runnable as soon as `run()` returns, which can take the signal
+object with it before a queued connection has delivered to the GUI thread.
+The result is silent: the work completes, the signal is emitted, and
+nothing ever arrives.
+
+This cost real debugging time here. The fix is for the owner to hold the
+task until its result has been delivered, which both worker paths now do.
+The symptom to recognise is a progress state that never resolves while the
+work itself demonstrably succeeded.
+
+## Drop to action
+
+The original plan for this feature was fixed drop zones: a left half that
+compresses, a right half that converts. That fails on contact with the
+actual object, because it asks the user to aim at half of a 30-pixel-tall
+pill while already holding a drag, and it cannot grow past two actions.
+
+Taking the drop first and asking afterwards solves both. The whole island
+is the target, and the set of offered actions varies with what was
+dropped, so a PDF is never offered a WebP conversion.
+
+Two invariants hold in the file layer, and both exist because the input is
+someone's only copy of a file:
+
+- Every output is written beside the original under a non-colliding name.
+  Nothing is overwritten and nothing is deleted.
+- An output larger than its input is discarded and reported as "already
+  optimal", rather than written and announced as a saving.
+
 ## Keeping the process small
 
 The island is meant to be left running, so the base process never imports

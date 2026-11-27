@@ -31,6 +31,7 @@ from core.theme import load_theme
 from core.tray import TrayController
 from ipc.server import ActivityServer
 from workers.ambient import AmbientProvider
+from workers.dropzone import DropActionProvider
 
 APP_NAME = "Adaptive Dynamic Island"
 
@@ -54,6 +55,7 @@ class Application(QObject):
             self.arbiter, self.settings, self.foreground, self.consent, self
         )
         self.ambient = AmbientProvider(self.arbiter, parent=self)
+        self.drops = DropActionProvider(self.arbiter, self)
         self.activities = ActivityServer(self.arbiter, self.settings, self)
 
         self.tray: TrayController | None = None
@@ -62,6 +64,7 @@ class Application(QObject):
 
         self.context.fullscreen_changed.connect(self._on_fullscreen)
         self.window.files_dropped.connect(self._on_files_dropped)
+        self.drops.completed.connect(self._on_drop_completed)
 
         # Replacing or unplugging a monitor moves the built-in panel's
         # coordinates, so the island has to be re-anchored.
@@ -152,6 +155,8 @@ class Application(QObject):
             self.context.start() if enabled else self.context.stop()
         elif key == "activities":
             self.activities.start() if enabled else self.activities.stop()
+        # "drop" needs no start or stop: it is driven entirely by the
+        # window's drop events and the setting is read when one arrives.
         # Remaining providers are wired as they are implemented; the menu
         # already persists their setting so nothing is lost in the meantime.
         self._refresh_window()
@@ -174,15 +179,16 @@ class Application(QObject):
         )
 
     def _on_files_dropped(self, paths_dropped: list) -> None:
-        # The Drop-to-Action pipeline lands here. Until it exists, say so
-        # plainly rather than silently swallowing the drop.
+        if not self.settings.get("providers.drop", True):
+            return
+        self.drops.handle_drop([str(p) for p in paths_dropped])
+
+    def _on_drop_completed(self, summary: str) -> None:
+        # The island's result state expires after a few seconds, so a tray
+        # notification is what makes the outcome recoverable if the user
+        # was looking elsewhere when it finished.
         if self.tray is not None:
-            count = len(paths_dropped)
-            noun = "file" if count == 1 else "files"
-            self.tray.notify(
-                APP_NAME,
-                f"{count} {noun} dropped. Drop actions are not wired up yet.",
-            )
+            self.tray.notify(APP_NAME, summary)
 
     # ---- diagnostics -------------------------------------------------
 

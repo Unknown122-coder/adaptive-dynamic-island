@@ -76,7 +76,10 @@ class _GitTask(QRunnable):
         super().__init__()
         self.repo = repo
         self.signals = _GitSignals()
-        self.setAutoDelete(True)
+        # The signal object lives on this runnable, so letting Qt delete it
+        # the moment run() returns can drop the queued result before the GUI
+        # thread sees it. The engine holds the reference instead.
+        self.setAutoDelete(False)
 
     def run(self) -> None:
         branch, detached = git_probe.read_branch(self.repo)
@@ -122,6 +125,9 @@ class ContextEngine(QObject):
         self._roots = default_project_roots()
         self._repo_for_title: dict[str, Path | None] = {}
         self._pending_repo: Path | None = None
+        # Keeps in-flight probes alive until their results arrive; see the
+        # note on _GitTask.setAutoDelete.
+        self._running: set[_GitTask] = set()
 
         foreground.changed.connect(self._on_foreground)
         consent.updated.connect(self._on_consent)
@@ -247,10 +253,17 @@ class ContextEngine(QObject):
 
     def _start_git_task(self, repo: Path) -> None:
         task = _GitTask(repo)
-        task.signals.done.connect(self._on_git_done)
+        self._running.add(task)
+        task.signals.done.connect(
+            lambda state, t=task: self._on_git_done(state, t)
+        )
         QThreadPool.globalInstance().start(task)
 
-    def _on_git_done(self, state: git_probe.RepoState) -> None:
+    def _on_git_done(
+        self, state: git_probe.RepoState, task: _GitTask | None = None
+    ) -> None:
+        if task is not None:
+            self._running.discard(task)
         # A slow probe can land after the user has moved on; drop it rather
         # than showing a branch for a project that is no longer in front.
         if self._state.profile != PROFILE_DEVELOPER:

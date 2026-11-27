@@ -30,6 +30,7 @@ _PROVIDER_LABELS = {
     "clock": "Clock",
     "context": "Context profiles",
     "activities": "Live activities",
+    "drop": "Drop to action (OCR, compress)",
     "clipboard": "Clipboard stack",
     "sentinel": "System alerts",
     "privacy": "Privacy guard (camera)",

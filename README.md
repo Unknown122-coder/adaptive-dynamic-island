@@ -64,7 +64,7 @@ Early development, and honest about it.
 | Live Activity API and `island` CLI | working |
 | Context profiles: meeting, developer | working |
 | System tray, diagnostics, settings | working |
-| Drop-to-Action OCR and file conversion | not started |
+| Drop-to-Action OCR, compression, conversion | working |
 | Clipboard stack with secret masking | not started |
 | System and network alerts | not started |
 | Privacy guard | not started |
@@ -120,6 +120,31 @@ with activity("build", "docker build · api", glyph="cube") as act:
 If the island is not running, every call is a silent no-op. A build must
 never fail because an overlay is closed.
 
+## Drop to action
+
+Drag files onto the island and it offers the operations that actually
+apply to them.
+
+![The island offering drop actions](docs/images/drop-offer.png)
+
+- **Extract text** runs offline OCR on an image, or reads the text layer
+  of a PDF, and puts the result on the clipboard.
+- **Compress** re-encodes images and PDFs.
+- **To WebP** converts images.
+
+Two rules the implementation holds to:
+
+**Your file is never touched.** Every output is written beside the
+original with a fresh name. Nothing is overwritten and nothing is deleted,
+because dropping something on a floating overlay is easy to do by accident.
+
+**A file is never made worse.** If a compressed output comes out larger
+than its input, which happens with already-optimised files, the output is
+discarded and the island says the file was already optimal.
+
+OCR needs the optional feature pack. Without it the other actions still
+work and the island says why text extraction is unavailable.
+
 ## Themes
 
 Themes are JSON files in `config/themes/`, or your own in
@@ -139,7 +164,9 @@ all themeable, including a custom cubic bezier.
 .venv\Scripts\python.exe scripts/preview.py  # render every UI state to build/preview/
 .venv\Scripts\python.exe scripts/smoke.py    # start the real app, verify, exit
 .venv\Scripts\python.exe scripts/e2e_activity.py  # drive the real CLI against the app
-.venv\Scripts\python.exe scripts/measure.py      # check the performance budgets
+.venv\Scripts\python.exe scripts/e2e_drop.py      # drive a real drop through the app
+.venv\Scripts\python.exe scripts/check_media.py   # OCR, compression and conversion
+.venv\Scripts\python.exe scripts/measure.py       # check the performance budgets
 ```
 
 `scripts/preview.py` renders every island state offscreen, so UI changes

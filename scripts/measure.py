@@ -83,6 +83,16 @@ def main() -> int:
         print("FAILED: the island never became visible")
         return 1
 
+    # The optional feature packs are the whole reason the idle figure is
+    # achievable. If one of them ever gets imported at startup the memory
+    # budget quietly doubles, so check directly rather than inferring it
+    # from the number.
+    eager = [
+        name
+        for name in ("rapidocr_onnxruntime", "onnxruntime", "cv2", "PIL.Image")
+        if name in sys.modules
+    ]
+
     rows = [
         ("cold start to visible pill", results["cold_start"], BUDGET_COLD_START_S, "s"),
         ("idle resident memory", results["rss"], BUDGET_RSS_MB, "MB"),
@@ -104,6 +114,14 @@ def main() -> int:
     print(f"{'threads':<32}{results['threads']:>10.0f}")
     print(f"{'os handles':<32}{results['handles']:>10.0f}")
     print(f"{'rss at startup':<32}{results['rss_at_start']:>10.2f} MB")
+
+    print("\nlazy feature packs")
+    if eager:
+        failures += 1
+        for name in eager:
+            print(f"  [FAIL] {name} was imported at startup")
+    else:
+        print("  [ok  ] OCR, ONNX and OpenCV stay unimported until used")
 
     if failures:
         print(f"\n{failures} budget(s) exceeded.")

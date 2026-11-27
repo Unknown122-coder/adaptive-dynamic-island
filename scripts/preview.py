@@ -119,7 +119,39 @@ def states() -> list[tuple[str, IslandContent, bool]]:
             True,
         ),
         (
-            "07-meeting-success",
+            "07-drop-offer",
+            IslandContent(
+                key="drop.offer",
+                priority=Priority.ACTIVITY,
+                title="screenshot.png",
+                detail="1.4 MB",
+                glyph="download",
+                urgency=Urgency.INFO,
+                actions=(
+                    Action("Extract text", lambda: None),
+                    Action("Compress", lambda: None),
+                    Action("To WebP", lambda: None),
+                ),
+                auto_expand=True,
+            ),
+            True,
+        ),
+        (
+            "08-drop-result",
+            IslandContent(
+                key="drop.result",
+                priority=Priority.ACTIVITY,
+                title="photo.min.jpg",
+                detail="442.9 KB to 39.1 KB, 91% smaller",
+                glyph="cube",
+                urgency=Urgency.SUCCESS,
+                actions=(Action("Show in folder", lambda: None),),
+                auto_expand=True,
+            ),
+            True,
+        ),
+        (
+            "09-meeting-success",
             IslandContent(
                 key="context.meeting",
                 priority=Priority.CONTEXT,

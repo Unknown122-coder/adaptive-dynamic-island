@@ -38,9 +38,18 @@ DEFAULTS: dict[str, Any] = {
         "clock": True,
         "context": True,
         "activities": True,
+        "drop": True,
         "clipboard": False,
         "sentinel": False,
         "privacy": False,
+    },
+    "drop": {
+        # Copy extracted text to the clipboard automatically. Off would mean
+        # the user has to click, which defeats the point of a drag.
+        "copy_text_automatically": True,
+        # Outputs are always written beside the original, never over it.
+        "jpeg_quality": 82,
+        "webp_quality": 85,
     },
     "context": {
         # Treat the microphone being live as "in a meeting", regardless of
