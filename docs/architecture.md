@@ -158,6 +158,34 @@ someone's only copy of a file:
 - An output larger than its input is discarded and reported as "already
   optimal", rather than written and announced as a saving.
 
+## Plugins
+
+The arbiter made the plugin system almost free. A plugin publishes the
+same `IslandContent` every built-in feature publishes, so the window
+needed no changes at all to support third-party content, and a plugin
+competes for the screen under the same policy as everything else.
+
+Two properties are enforced by the host rather than asked of the author:
+
+- **Priority is clamped.** Everything a plugin publishes is pinned to
+  `Priority.PLUGIN`. A plugin asking for critical urgency changes its
+  colour, not its ranking, so it cannot bury a privacy warning however it
+  is written.
+- **Namespaces are assigned.** Content keys are prefixed with the plugin's
+  id by the host, and an id containing a dot is rejected at load time,
+  because the dot is the namespace separator and an id carrying one could
+  address another provider's content.
+
+Timers are handed out by the context and owned by the host, which is the
+single most common way a plugin system leaks. Every entry point into
+plugin code is wrapped, and three failures disable a plugin for the
+session.
+
+What the host cannot do is contain a *hostile* plugin. It is ordinary
+Python in the island's process with the user's privileges. The
+documentation says so rather than implying a sandbox, because a security
+boundary that does not exist is worse than no claim at all.
+
 ## Credential detection
 
 The clipboard guard exists because Windows clipboard history makes a

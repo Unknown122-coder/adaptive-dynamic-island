@@ -181,7 +181,21 @@ def states() -> list[tuple[str, IslandContent, bool]]:
             True,
         ),
         (
-            "11-meeting-success",
+            "11-plugin-pomodoro",
+            IslandContent(
+                key="plugin.pomodoro.main",
+                priority=Priority.PLUGIN,
+                title="Focus · 18:42",
+                detail="2 completed",
+                glyph="clock",
+                progress=0.25,
+                urgency=Urgency.INFO,
+                actions=(Action("Stop", lambda: None),),
+            ),
+            True,
+        ),
+        (
+            "12-meeting-success",
             IslandContent(
                 key="context.meeting",
                 priority=Priority.CONTEXT,

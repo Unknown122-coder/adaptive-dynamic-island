@@ -66,9 +66,9 @@ Early development, and honest about it.
 | System tray, diagnostics, settings | working |
 | Drop-to-Action OCR, compression, conversion | working |
 | Clipboard stack with secret masking | working |
+| Plugin loader and sample plugins | working |
 | System and network alerts | not started |
 | Privacy guard | not started |
-| Plugin loader | not started |
 | Installer | not started |
 
 ## Requirements
@@ -175,6 +175,40 @@ minified JavaScript, and a leak detector that cries wolf gets switched off
 within a day. Where no prefix exists, a rule needs a nearby keyword such
 as `DB_PASSWORD=` rather than matching the value alone.
 
+## Plugins
+
+A plugin is one Python file dropped into
+`%APPDATA%\AdaptiveIsland\plugins\`. Rescan from the tray and it appears
+in the menu.
+
+```python
+from core.plugin_api import IslandPlugin, PluginContext
+
+
+class Hello(IslandPlugin):
+    id = "hello"
+    name = "Hello"
+
+    def setup(self, ctx: PluginContext) -> None:
+        ctx.every(1000, lambda: ctx.show("Hello", detail="from a plugin"))
+```
+
+Two samples ship with the island, both off by default: a pomodoro timer
+showing the interactive shape, and a battery warning showing the sensor
+shape that stays silent until something matters.
+
+The host enforces two things rather than asking plugins to behave. A
+plugin's content is clamped below live activities, system alerts and
+privacy warnings, so it can never bury something that protects you. And
+every call into plugin code is wrapped, so a plugin that raises is
+reported and eventually disabled while the island carries on.
+
+There is no sandbox, and the documentation says so rather than implying
+one. A plugin is ordinary Python with your privileges. Read one before
+you install it.
+
+[docs/plugins.md](docs/plugins.md) is the full authoring guide.
+
 ## Themes
 
 Themes are JSON files in `config/themes/`, or your own in
@@ -196,6 +230,7 @@ all themeable, including a custom cubic bezier.
 .venv\Scripts\python.exe scripts/e2e_activity.py  # drive the real CLI against the app
 .venv\Scripts\python.exe scripts/e2e_drop.py      # drive a real drop through the app
 .venv\Scripts\python.exe scripts/e2e_clipboard.py # drive the real clipboard
+.venv\Scripts\python.exe scripts/e2e_plugins.py   # load and contain real plugins
 .venv\Scripts\python.exe scripts/check_media.py   # OCR, compression and conversion
 .venv\Scripts\python.exe scripts/measure.py       # check the performance budgets
 ```

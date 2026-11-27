@@ -31,6 +31,7 @@ _PROVIDER_LABELS = {
     "context": "Context profiles",
     "activities": "Live activities",
     "drop": "Drop to action (OCR, compress)",
+    "plugins": "Plugins",
     "clipboard": "Clipboard stack",
     "sentinel": "System alerts",
     "privacy": "Privacy guard (camera)",
@@ -70,6 +71,8 @@ class TrayController(QObject):
     """Owns the tray icon and translates menu clicks into signals."""
 
     quit_requested = Signal()
+    plugin_toggled = Signal(str, bool)
+    plugins_reload_requested = Signal()
     visibility_toggled = Signal(bool)
     provider_toggled = Signal(str, bool)
     theme_selected = Signal(str)
@@ -88,6 +91,7 @@ class TrayController(QObject):
         self._arbiter = arbiter
         self._theme = theme
         self._visible = True
+        self._plugin_source = None
 
         self._tray = QSystemTrayIcon(build_icon(theme), self)
         self._tray.setToolTip("Adaptive Dynamic Island")
@@ -117,6 +121,8 @@ class TrayController(QObject):
                 lambda checked, k=key: self._on_provider_toggled(k, checked)
             )
             features.addAction(action)
+
+        self._build_plugin_menu(menu)
 
         themes = menu.addMenu("Theme")
         seen: set[str] = set()
@@ -160,6 +166,56 @@ class TrayController(QObject):
         quit_action = QAction("Quit", menu)
         quit_action.triggered.connect(self.quit_requested.emit)
         menu.addAction(quit_action)
+
+    def _build_plugin_menu(self, menu: QMenu) -> None:
+        """List discovered plugins with a checkbox each."""
+        plugins = menu.addMenu("Plugins")
+        entries = self._plugin_entries() if self._plugin_source else []
+        for entry in entries:
+            action = QAction(entry.name, plugins)
+            action.setCheckable(True)
+            action.setChecked(entry.active)
+            if not entry.healthy:
+                action.setEnabled(False)
+                action.setText(f"{entry.name} — {entry.disabled_reason}")
+            action.setToolTip(entry.description or entry.id)
+            action.toggled.connect(
+                lambda checked, pid=entry.id: self.plugin_toggled.emit(
+                    pid, checked
+                )
+            )
+            plugins.addAction(action)
+        if not entries:
+            empty = QAction("No plugins found", plugins)
+            empty.setEnabled(False)
+            plugins.addAction(empty)
+        plugins.addSeparator()
+        rescan = QAction("Rescan plugins folder", plugins)
+        rescan.triggered.connect(self.plugins_reload_requested.emit)
+        plugins.addAction(rescan)
+        open_folder = QAction("Open plugins folder", plugins)
+        open_folder.triggered.connect(self._open_plugins_folder)
+        plugins.addAction(open_folder)
+
+    def _plugin_entries(self):
+        try:
+            return self._plugin_source()
+        except Exception as exc:  # the menu must still open
+            print(f"[tray] could not list plugins: {exc}")
+            return []
+
+    def set_plugin_source(self, source) -> None:
+        """Give the tray a callable returning the loaded plugin list."""
+        self._plugin_source = source
+        self.refresh_menu()
+
+    @staticmethod
+    def _open_plugins_folder() -> None:
+        import os
+
+        folder = paths.user_dir() / "plugins"
+        folder.mkdir(parents=True, exist_ok=True)
+        os.startfile(str(folder))
 
     def refresh_menu(self) -> None:
         self._build_menu()

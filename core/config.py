@@ -39,10 +39,15 @@ DEFAULTS: dict[str, Any] = {
         "context": True,
         "activities": True,
         "drop": True,
+        "plugins": True,
         "clipboard": False,
         "sentinel": False,
         "privacy": False,
     },
+    # Per-plugin settings live under plugins.<id>, for example
+    # {"plugins": {"pomodoro": {"enabled": true, "focus_minutes": 50}}}.
+    # A plugin reads its own block through ctx.setting().
+    "plugins": {},
     "clipboard": {
         # How many recent items to keep. Memory only; never written to disk.
         "stack_size": 5,

@@ -82,6 +82,9 @@ ignore = [
 "main.py" = ["E402"]
 "island.py" = ["E402"]
 "scripts/*" = ["E402", "SLF001", "T201"]
+# teardown() and on_island_clicked() are deliberately optional hooks with
+# empty default bodies: a plugin should not be forced to implement either.
+"core/plugin_api.py" = ["B027"]
 "tests/*" = ["SLF001"]
 
 [tool.ruff.lint.isort]

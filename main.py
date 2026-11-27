@@ -26,6 +26,7 @@ from core.context_engine import ContextEngine
 from core.island_window import IslandWindow
 from core.osbridge.consent import ConsentWatcher
 from core.osbridge.window_hooks import ForegroundWatcher
+from core.plugin_manager import PluginManager
 from core.single_instance import SingleInstance
 from core.theme import load_theme
 from core.tray import TrayController
@@ -58,6 +59,7 @@ class Application(QObject):
         self.ambient = AmbientProvider(self.arbiter, parent=self)
         self.drops = DropActionProvider(self.arbiter, self)
         self.clipboard = ClipboardGuard(self.arbiter, self.settings, self)
+        self.plugins = PluginManager(self.arbiter, self.settings, self)
         self.activities = ActivityServer(self.arbiter, self.settings, self)
 
         self.tray: TrayController | None = None
@@ -68,6 +70,7 @@ class Application(QObject):
         self.window.files_dropped.connect(self._on_files_dropped)
         self.drops.completed.connect(self._on_drop_completed)
         self.clipboard.secret_detected.connect(self._on_secret_detected)
+        self.plugins.plugin_failed.connect(self._on_plugin_failed)
 
         # Replacing or unplugging a monitor moves the built-in panel's
         # coordinates, so the island has to be re-anchored.
@@ -100,6 +103,9 @@ class Application(QObject):
             self.tray.theme_selected.connect(self._on_theme_selected)
             self.tray.reposition_requested.connect(self._reposition)
             self.tray.diagnostics_requested.connect(self._show_diagnostics)
+            self.tray.plugin_toggled.connect(self._on_plugin_toggled)
+            self.tray.plugins_reload_requested.connect(self._on_plugins_reload)
+            self.tray.set_plugin_source(self.plugins.all)
             self.tray.show()
 
         hooked = self.foreground.start()
@@ -113,6 +119,10 @@ class Application(QObject):
             self.context.start()
         if self.settings.get("providers.clipboard", False):
             self.clipboard.start()
+        if self.settings.get("providers.plugins", True):
+            report = self.plugins.discover()
+            self.plugins.start_enabled()
+            print(f"[main] plugins: {report.summary()}")
         if self.settings.get("providers.activities", True) and (
             self.activities.start()
         ):
@@ -162,11 +172,34 @@ class Application(QObject):
             self.activities.start() if enabled else self.activities.stop()
         elif key == "clipboard":
             self.clipboard.start() if enabled else self.clipboard.stop()
+        elif key == "plugins":
+            if enabled:
+                self.plugins.discover()
+                self.plugins.start_enabled()
+            else:
+                self.plugins.unload_all()
         # "drop" needs no start or stop: it is driven entirely by the
         # window's drop events and the setting is read when one arrives.
         # Remaining providers are wired as they are implemented; the menu
         # already persists their setting so nothing is lost in the meantime.
         self._refresh_window()
+
+    def _on_plugin_toggled(self, plugin_id: str, enabled: bool) -> None:
+        self.plugins.set_enabled(plugin_id, enabled)
+
+    def _on_plugins_reload(self) -> None:
+        report = self.plugins.reload()
+        if self.tray is not None:
+            self.tray.refresh_menu()
+            message = report.summary()
+            if report.rejected:
+                first = report.rejected[0]
+                message += f" — {first[0]}: {first[1]}"
+            self.tray.notify(APP_NAME, f"Plugins rescanned: {message}")
+
+    def _on_plugin_failed(self, plugin_id: str, message: str) -> None:
+        if self.tray is not None:
+            self.tray.notify(APP_NAME, f"Plugin {plugin_id} failed: {message}")
 
     def _on_theme_selected(self, name: str) -> None:
         self.settings.set("theme", name)
@@ -243,6 +276,7 @@ class Application(QObject):
                 f"  repository: {repo.path} ({repo.branch}, {repo.dirty} dirty)"
             )
 
+        lines += ["", "Plugins", self.plugins.describe()]
         lines += ["", "Content candidates (highest priority first)"]
         candidates = self.arbiter.candidates()
         if not candidates:
@@ -263,6 +297,7 @@ class Application(QObject):
 
     def shutdown(self) -> None:
         self.activities.stop()
+        self.plugins.unload_all()
         self.clipboard.stop()
         self.ambient.stop()
         self.context.stop()
