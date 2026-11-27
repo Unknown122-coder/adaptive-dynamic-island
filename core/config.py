@@ -33,6 +33,11 @@ DEFAULTS: dict[str, Any] = {
         # Seconds of ambient content before the island collapses to its
         # smallest state. 0 keeps it always visible.
         "idle_collapse_seconds": 0,
+        # When true, a collapsed pill with no buttons ignores the mouse
+        # entirely, so a click passes through to the window beneath. It
+        # also means the island can no longer be hovered open, which is
+        # why it is off by default.
+        "click_through_when_passive": False,
     },
     "providers": {
         "clock": True,

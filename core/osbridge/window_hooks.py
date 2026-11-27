@@ -86,6 +86,9 @@ _user32.MonitorFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD]
 _user32.MonitorFromWindow.restype = wintypes.HANDLE
 _user32.IsWindow.argtypes = [wintypes.HWND]
 _user32.IsWindow.restype = wintypes.BOOL
+_user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+_user32.GetClassNameW.restype = ctypes.c_int
+_user32.GetShellWindow.restype = wintypes.HWND
 
 
 class MONITORINFO(ctypes.Structure):
@@ -125,6 +128,34 @@ def window_pid(hwnd: int) -> int:
     return int(pid.value)
 
 
+def window_class(hwnd: int) -> str:
+    if not hwnd:
+        return ""
+    buffer = ctypes.create_unicode_buffer(256)
+    _user32.GetClassNameW(hwnd, buffer, 256)
+    return buffer.value
+
+
+# Shell surfaces that fill the screen and have no frame, so a naive
+# geometry test calls them full-screen. The desktop is the important one:
+# showing the desktop or minimising everything makes Progman the
+# foreground window, and treating that as a full-screen app made the
+# island vanish exactly when there was nothing covering it.
+_SHELL_CLASSES = frozenset(
+    {
+        "Progman",
+        "WorkerW",
+        "Shell_TrayWnd",
+        "Shell_SecondaryTrayWnd",
+        "SysListView32",
+        "#32769",
+        "Windows.UI.Core.CoreWindow",
+        "ForegroundStaging",
+        "XamlExplorerHostIslandWindow",
+    }
+)
+
+
 def is_fullscreen(hwnd: int) -> bool:
     """True when ``hwnd`` covers its whole monitor and has no window frame.
 
@@ -134,6 +165,12 @@ def is_fullscreen(hwnd: int) -> bool:
     editor would defeat the point of the app.
     """
     if not hwnd or not _user32.IsWindow(hwnd):
+        return False
+    # The desktop and the taskbar are not applications to hide behind.
+    if window_class(hwnd) in _SHELL_CLASSES:
+        return False
+    shell = _user32.GetShellWindow()
+    if shell and int(shell) == int(hwnd):
         return False
     rect = wintypes.RECT()
     if not _user32.GetWindowRect(hwnd, ctypes.byref(rect)):

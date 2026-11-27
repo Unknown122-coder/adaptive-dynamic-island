@@ -51,6 +51,9 @@ class Application(QObject):
 
         self.arbiter = ContentArbiter(self)
         self.window = IslandWindow(self.theme)
+        self.window.set_passive_click_through(
+            bool(self.settings.get("behaviour.click_through_when_passive", False))
+        )
         self.arbiter.content_changed.connect(self._on_content)
 
         self.foreground = ForegroundWatcher(parent=self)

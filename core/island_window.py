@@ -83,6 +83,7 @@ class IslandWindow(QWidget):
         self._armed_destructive: Action | None = None
         self._placement: geometry.Placement | None = None
         self._pill_rect = QRect()
+        self._passive_click_through = False
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -381,13 +382,25 @@ class IslandWindow(QWidget):
             window_style.reassert_topmost(hwnd)
 
     def _refresh_interactivity(self) -> None:
-        """Make the island click-through when it has nothing to click.
+        """Decide whether mouse input reaches the island.
 
-        A collapsed, action-less pill sits exactly where a user reaches for
-        a browser tab, so it must not swallow that click.
+        This used to turn on click-through whenever the island had no
+        buttons, to avoid swallowing a click aimed at a browser tab
+        underneath. That was a deadlock: ``WS_EX_TRANSPARENT`` blocks
+        *all* mouse input, including the hover that is the only way to
+        expand the island and give it buttons in the first place. The
+        island could never be hovered, expanded or clicked.
+
+        Windows has no "receive hover but pass clicks" mode, so the
+        island is interactive by default and clicking a passive pill
+        simply expands it. Users who would rather have a pill they cannot
+        touch can set ``behaviour.click_through_when_passive``.
         """
         hwnd = int(self.winId())
         if not hwnd:
+            return
+        if not self._passive_click_through:
+            window_style.set_click_through(hwnd, enabled=False)
             return
         content = self._content
         interactive = bool(
@@ -396,6 +409,27 @@ class IslandWindow(QWidget):
             or (content is not None and content.actions)
         )
         window_style.set_click_through(hwnd, enabled=not interactive)
+
+    def set_passive_click_through(self, enabled: bool) -> None:
+        """Opt in to a collapsed pill that ignores the mouse entirely."""
+        self._passive_click_through = bool(enabled)
+        self._refresh_interactivity()
+
+    @property
+    def passive_click_through(self) -> bool:
+        return self._passive_click_through
+
+    @property
+    def click_through_active(self) -> bool:
+        """Whether mouse input is currently passing straight through."""
+        if not self._passive_click_through:
+            return False
+        content = self._content
+        return not (
+            self._expanded
+            or self._drag_active
+            or (content is not None and content.actions)
+        )
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
