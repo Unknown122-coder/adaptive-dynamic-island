@@ -145,6 +145,11 @@ class DropActionProvider(QObject):
             )
             for operation in operations
         )
+        # Cancel last, so it sits on the right where a dismiss belongs.
+        # Without it the only way out of a mis-drop was to wait for the
+        # offer to time out, which is a long time to stare at a question
+        # you have already answered.
+        actions += (Action("Cancel", self.cancel),)
         self._handle.publish_content(
             IslandContent(
                 key="drop.offer",
@@ -159,6 +164,11 @@ class DropActionProvider(QObject):
                 expires_at=ProviderHandle.ttl(OFFER_TTL),
             )
         )
+
+    def cancel(self) -> None:
+        """Dismiss an unanswered offer and forget what was dropped."""
+        self._paths = []
+        self._handle.retract("offer")
 
     def _start(self, operation: media.Operation) -> None:
         if self._busy or not self._paths:

@@ -249,6 +249,18 @@ class IslandWindow(QWidget):
 
         if content.auto_expand and not self._expanded:
             self.set_expanded(True)
+        elif (
+            self._expanded
+            and not content.auto_expand
+            and not self._hovered
+            and not self._pinned
+        ):
+            # Content that opened the island by itself has to close it
+            # again when it goes away. Without this the island stays
+            # expanded around whatever took over, usually the clock, and
+            # only snaps back when the user happens to hover it and
+            # leave, which looks like it is stuck.
+            self.set_expanded(False)
         self._refresh_interactivity()
 
     def content(self) -> IslandContent | None:

@@ -161,6 +161,7 @@ def states() -> list[tuple[str, IslandContent, bool]]:
                     Action("Extract text", lambda: None),
                     Action("Compress", lambda: None),
                     Action("To WebP", lambda: None),
+                    Action("Cancel", lambda: None),
                 ),
                 auto_expand=True,
             ),
