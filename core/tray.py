@@ -67,12 +67,31 @@ def build_icon(theme: Theme, size: int = 64) -> QIcon:
     return QIcon(pixmap)
 
 
+class StickyMenu(QMenu):
+    """A menu whose checkable items do not close it.
+
+    Qt closes a menu as soon as any action is triggered, which is right
+    for commands and wrong for a column of switches: turning on four
+    features meant opening the menu four times. Checkable actions now
+    toggle in place and the menu stays up; everything else behaves
+    normally.
+    """
+
+    def mouseReleaseEvent(self, event) -> None:
+        action = self.activeAction()
+        if action is not None and action.isEnabled() and action.isCheckable():
+            action.trigger()
+            return
+        super().mouseReleaseEvent(event)
+
+
 class TrayController(QObject):
     """Owns the tray icon and translates menu clicks into signals."""
 
     quit_requested = Signal()
     plugin_toggled = Signal(str, bool)
     plugins_reload_requested = Signal()
+    control_panel_requested = Signal()
     privacy_watch_toggled = Signal(bool)
     visibility_toggled = Signal(bool)
     provider_toggled = Signal(str, bool)
@@ -108,13 +127,18 @@ class TrayController(QObject):
         menu = self._menu
         menu.clear()
 
+        control = QAction("Control panel…", menu)
+        control.triggered.connect(self.control_panel_requested.emit)
+        menu.addAction(control)
+
         self._visibility_action = QAction("Hide island", menu)
         self._visibility_action.triggered.connect(self._toggle_visibility)
         menu.addAction(self._visibility_action)
 
         menu.addSeparator()
 
-        features = menu.addMenu("Features")
+        features = StickyMenu("Features", menu)
+        menu.addMenu(features)
         for key, label in _PROVIDER_LABELS.items():
             action = QAction(label, features)
             action.setCheckable(True)
@@ -183,7 +207,8 @@ class TrayController(QObject):
 
     def _build_plugin_menu(self, menu: QMenu) -> None:
         """List discovered plugins with a checkbox each."""
-        plugins = menu.addMenu("Plugins")
+        plugins = StickyMenu("Plugins", menu)
+        menu.addMenu(plugins)
         entries = self._plugin_entries() if self._plugin_source else []
         for entry in entries:
             action = QAction(entry.name, plugins)

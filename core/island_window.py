@@ -68,6 +68,7 @@ class IslandWindow(QWidget):
     files_dropped = Signal(list)       # list[str] of local paths
     surface_clicked = Signal()
     expansion_changed = Signal(bool)
+    panel_requested = Signal()
 
     def __init__(self, theme: Theme, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -84,6 +85,7 @@ class IslandWindow(QWidget):
         self._placement: geometry.Placement | None = None
         self._pill_rect = QRect()
         self._passive_click_through = False
+        self._pinned = False
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -457,8 +459,22 @@ class IslandWindow(QWidget):
             self._close_timer.start()
         self.update()
 
+    def set_pinned(self, pinned: bool) -> None:
+        """Hold the island open regardless of the mouse.
+
+        Used while the control panel is showing: the panel hangs off the
+        island's lower edge, so letting the island collapse out from under
+        it would move the thing the panel is attached to.
+        """
+        self._pinned = bool(pinned)
+        if pinned:
+            self._close_timer.stop()
+            self.set_expanded(True)
+        elif not self._hovered:
+            self._close_timer.start()
+
     def _close_if_unhovered(self) -> None:
-        if self._hovered:
+        if self._hovered or self._pinned:
             return
         content = self._content
         # Content that demanded attention stays open until it is retracted.
@@ -467,6 +483,9 @@ class IslandWindow(QWidget):
         self.set_expanded(False)
 
     def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.RightButton:
+            self.panel_requested.emit()
+            return
         pos = event.position().toPoint()
         for hit in self._hits:
             if not hit.rect.contains(pos):
@@ -487,6 +506,13 @@ class IslandWindow(QWidget):
             self.update()
             return
         self.surface_clicked.emit()
+        content = self._content
+        if content is not None and not content.actions:
+            # Nothing on the island to act on, so the click means "show me
+            # the controls" rather than "expand this a bit more". Content
+            # with its own buttons keeps the click for those.
+            self.panel_requested.emit()
+            return
         if not self._expanded:
             self.set_expanded(True)
 

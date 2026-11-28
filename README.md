@@ -97,6 +97,18 @@ inside its memory budget:
 .venv\Scripts\python.exe -m pip install -r requirements-vision.txt
 ```
 
+## Controlling it
+
+Click the island when it is showing something passive, or right-click it
+at any time, and a control panel opens underneath.
+
+![The control panel](docs/images/control-panel.png)
+
+Every switch lives there, and it stays open until you click away or press
+Escape, so turning on four things takes four clicks. The tray menu still
+works and still has everything, and its checkboxes no longer close the
+menu when you tick one.
+
 ## Pushing a live activity
 
 See [docs/live-activities.md](docs/live-activities.md) for the full

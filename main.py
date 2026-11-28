@@ -23,6 +23,7 @@ from core import paths
 from core.arbiter import ContentArbiter
 from core.config import Settings
 from core.context_engine import ContextEngine
+from core.control_panel import ControlPanel
 from core.island_window import IslandWindow
 from core.osbridge.consent import ConsentWatcher
 from core.osbridge.window_hooks import ForegroundWatcher
@@ -55,6 +56,10 @@ class Application(QObject):
             bool(self.settings.get("behaviour.click_through_when_passive", False))
         )
         self.arbiter.content_changed.connect(self._on_content)
+        self.panel = ControlPanel(
+            self.theme,
+            lambda key: bool(self.settings.get(f"providers.{key}", False)),
+        )
 
         self.foreground = ForegroundWatcher(parent=self)
         self.consent = ConsentWatcher(self)
@@ -82,6 +87,13 @@ class Application(QObject):
         self.plugins.plugin_failed.connect(self._on_plugin_failed)
         self.privacy.warning_raised.connect(self._on_privacy_warning)
         self.sentinel.alert_raised.connect(self._on_system_alert)
+        self.window.panel_requested.connect(self.toggle_panel)
+        self.panel.feature_toggled.connect(self._on_panel_feature)
+        self.panel.plugin_toggled.connect(self._on_plugin_toggled)
+        self.panel.theme_selected.connect(self._on_theme_selected)
+        self.panel.diagnostics_requested.connect(self._show_diagnostics)
+        self.panel.quit_requested.connect(self.shutdown)
+        self.panel.closed.connect(lambda: self.window.set_pinned(False))
 
         # Replacing or unplugging a monitor moves the built-in panel's
         # coordinates, so the island has to be re-anchored.
@@ -117,6 +129,7 @@ class Application(QObject):
             self.tray.plugin_toggled.connect(self._on_plugin_toggled)
             self.tray.plugins_reload_requested.connect(self._on_plugins_reload)
             self.tray.set_plugin_source(self.plugins.all)
+            self.tray.control_panel_requested.connect(self.toggle_panel)
             self.tray.privacy_watch_toggled.connect(
                 self.privacy.set_manual_watch
             )
@@ -221,6 +234,49 @@ class Application(QObject):
             (start if enabled else stop)()
         self._refresh_window()
 
+    # ---- control panel -------------------------------------------------
+
+    def toggle_panel(self) -> None:
+        """Open the control panel under the island, or close it."""
+        if self.panel.isVisible():
+            self.panel.hide()
+            return
+        self.panel.sync()
+        self.panel.set_plugins(self.plugins.all())
+        self.panel.set_themes(self._available_themes(), str(
+            self.settings.get("theme", "midnight_oled")
+        ))
+        placement = self.window.placement()
+        screen_rect = (
+            placement.screen_rect
+            if placement is not None
+            else self.window.geometry()
+        )
+        # Pin the island open: the panel hangs off its lower edge, so
+        # letting it collapse would move what the panel is attached to.
+        self.window.set_pinned(True)
+        self.panel.show_under(self.window.geometry(), screen_rect)
+
+    @staticmethod
+    def _available_themes() -> list[str]:
+        seen: list[str] = []
+        for directory in paths.theme_dirs():
+            if not directory.is_dir():
+                continue
+            for path in sorted(directory.glob("*.json")):
+                if path.stem not in seen:
+                    seen.append(path.stem)
+        return seen
+
+    def _on_panel_feature(self, key: str, enabled: bool) -> None:
+        self.settings.set(f"providers.{key}", enabled)
+        self.settings.save()
+        self._on_provider_toggled(key, enabled)
+        if key == "plugins":
+            self.panel.set_plugins(self.plugins.all())
+        if self.tray is not None:
+            self.tray.refresh_menu()
+
     def _on_plugin_toggled(self, plugin_id: str, enabled: bool) -> None:
         self.plugins.set_enabled(plugin_id, enabled)
 
@@ -256,6 +312,7 @@ class Application(QObject):
         self.settings.save()
         self.theme = self._load_theme()
         self.window.apply_theme(self.theme)
+        self.panel.apply_theme(self.theme)
         if self.tray is not None:
             self.tray.apply_theme(self.theme)
             self.tray.refresh_menu()
@@ -351,6 +408,7 @@ class Application(QObject):
         # Order matters: anything owning a thread or a device goes first,
         # so the camera is released and the worker joined before Qt starts
         # tearing objects down underneath them.
+        self.panel.hide()
         self.privacy.stop()
         self.sentinel.stop()
         self.plugins.unload_all()
